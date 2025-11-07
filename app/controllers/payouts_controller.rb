@@ -128,7 +128,10 @@ class PayoutsController < ApplicationController
       customer_id: payment.customer_id,
       customer_email: payment.customer_email,
       customer_name: payment.customer_name,
-      eu_classification: payment.eu_classification
+      eu_classification: payment.eu_classification,
+      has_transaction: payment.stripe_transaction.present?,
+      transaction_id: payment.stripe_transaction&.id,
+      location_confidence_score: payment.stripe_transaction&.location_confidence_score || 0
     }
   end
 end

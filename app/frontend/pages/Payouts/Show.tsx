@@ -18,6 +18,9 @@ interface Payment {
   customer_email: string | null
   customer_name: string | null
   eu_classification: 'undetermined' | 'eu' | 'non_eu'
+  has_transaction: boolean
+  transaction_id: number | null
+  location_confidence_score: number
 }
 
 interface Payout {
@@ -350,10 +353,12 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
                     <th>Stripe ID</th>
                     <th>Customer</th>
                     <th>EU Classification</th>
+                    <th>Confidence</th>
                     <th>Amount</th>
                     <th>Fees</th>
                     <th>Net</th>
                     <th>Currency</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -376,6 +381,15 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
                         {payment.customer_name || payment.customer_email || 'N/A'}
                       </td>
                       <td>{getEuClassificationBadge(payment.eu_classification)}</td>
+                      <td>
+                        {payment.has_transaction ? (
+                          <span className="badge badge-outline">
+                            {payment.location_confidence_score}/3
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 text-sm">-</span>
+                        )}
+                      </td>
                       <td>{formatCurrency(payment.amount, payment.currency)}</td>
                       <td>{formatCurrency(payment.fees, payment.converted_currency)}</td>
                       <td className="font-semibold">
@@ -383,6 +397,19 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
                       </td>
                       <td>
                         {payment.converted_currency || payment.currency || 'N/A'}
+                      </td>
+                      <td>
+                        {payment.has_transaction && payment.transaction_id ? (
+                          <Link
+                            href={`/transactions/${payment.transaction_id}`}
+                            className="btn btn-sm btn-outline"
+                            title="View detailed transaction information"
+                          >
+                            View Transaction
+                          </Link>
+                        ) : (
+                          <span className="text-gray-400 text-sm">No transaction</span>
+                        )}
                       </td>
                     </tr>
                   ))}
