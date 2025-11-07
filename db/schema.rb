@@ -10,9 +10,43 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_07_164453) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_07_172422) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "payments", force: :cascade do |t|
+    t.bigint "payout_id", null: false
+    t.string "type", null: false
+    t.string "stripe_id", null: false
+    t.datetime "created_at_stripe", null: false
+    t.text "description"
+    t.decimal "amount", precision: 10, scale: 2
+    t.string "currency"
+    t.decimal "converted_amount", precision: 10, scale: 2
+    t.decimal "fees", precision: 10, scale: 2
+    t.decimal "net", precision: 10, scale: 2
+    t.string "converted_currency"
+    t.text "details"
+    t.string "customer_id"
+    t.string "customer_email"
+    t.string "customer_name"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["payout_id", "stripe_id"], name: "index_payments_on_payout_id_and_stripe_id", unique: true
+    t.index ["payout_id"], name: "index_payments_on_payout_id"
+    t.index ["stripe_id"], name: "index_payments_on_stripe_id"
+  end
+
+  create_table "payouts", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "name", null: false
+    t.date "period_start", null: false
+    t.date "period_end", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id", "period_start", "period_end"], name: "index_payouts_on_user_id_and_period_start_and_period_end"
+    t.index ["user_id"], name: "index_payouts_on_user_id"
+  end
 
   create_table "sessions", force: :cascade do |t|
     t.bigint "user_id", null: false
@@ -31,5 +65,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_07_164453) do
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
   end
 
+  add_foreign_key "payments", "payouts"
+  add_foreign_key "payouts", "users"
   add_foreign_key "sessions", "users"
 end

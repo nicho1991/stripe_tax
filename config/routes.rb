@@ -2,6 +2,8 @@ Rails.application.routes.draw do
   root "home#index"
   get "dashboard", to: "dashboard#index"
 
+  resources :payouts
+
   resource :session
   resource :registration
   resources :passwords, param: :token
