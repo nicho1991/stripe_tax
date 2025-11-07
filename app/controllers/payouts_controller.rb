@@ -112,6 +112,38 @@ class PayoutsController < ApplicationController
   end
 
   def payment_props(payment)
+    customer_link = payment.customer_id.present? ? customer_path(payment.customer_id) : nil
+
+    transaction = payment.stripe_transaction
+    enhanced_data = if transaction
+      enhancement = transaction.enhanced_location_confidence
+      classification = transaction.customer_influenced_eu_classification
+      
+      {
+        location_confidence_score: transaction.location_confidence_score,
+        enhanced_location_confidence_score: enhancement[:enhanced_score],
+        inferred_fields: enhancement[:inferred_fields],
+        inferred_data: enhancement[:inferred_data],
+        eu_classification: transaction.eu_classification,
+        customer_influenced_eu_classification: classification[:customer_influenced],
+        card_address_country: transaction.card_address_country,
+        card_issue_country: transaction.card_issue_country,
+        shipping_address_country: transaction.shipping_address_country
+      }
+    else
+      {
+        location_confidence_score: 0,
+        enhanced_location_confidence_score: 0,
+        inferred_fields: [],
+        inferred_data: {},
+        eu_classification: payment.eu_classification,
+        customer_influenced_eu_classification: payment.eu_classification,
+        card_address_country: nil,
+        card_issue_country: nil,
+        shipping_address_country: nil
+      }
+    end
+
     {
       id: payment.id,
       type: payment.type,
@@ -128,10 +160,10 @@ class PayoutsController < ApplicationController
       customer_id: payment.customer_id,
       customer_email: payment.customer_email,
       customer_name: payment.customer_name,
-      eu_classification: payment.eu_classification,
+      customer_link: customer_link,
       has_transaction: payment.stripe_transaction.present?,
       transaction_id: payment.stripe_transaction&.id,
-      location_confidence_score: payment.stripe_transaction&.location_confidence_score || 0
+      **enhanced_data
     }
   end
 end

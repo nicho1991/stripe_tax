@@ -13,6 +13,8 @@ interface Transaction {
   eu_classification: 'undetermined' | 'eu' | 'non_eu'
   has_payment: boolean
   payment_id: number | null
+  customer_id: string | null
+  customer_link: string | null
 }
 
 interface Payment {
@@ -31,6 +33,7 @@ interface Payment {
   customer_id: string | null
   customer_email: string | null
   customer_name: string | null
+  customer_link: string | null
   eu_classification: 'undetermined' | 'eu' | 'non_eu'
   payout_id: number
 }
@@ -242,6 +245,19 @@ export default function Show({ transaction, payment }: Props) {
                       <span className="label-text font-semibold">Customer Name</span>
                     </label>
                     <p>{payment.customer_name}</p>
+                  </div>
+                )}
+
+                {payment.customer_link && (
+                  <div>
+                    <label className="label">
+                      <span className="label-text font-semibold">Customer Profile</span>
+                    </label>
+                    <p>
+                      <Link href={payment.customer_link} className="btn btn-sm btn-outline">
+                        View Customer Profile
+                      </Link>
+                    </p>
                   </div>
                 )}
               </div>

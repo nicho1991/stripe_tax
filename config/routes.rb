@@ -4,6 +4,7 @@ Rails.application.routes.draw do
 
   resources :payouts
   resources :transactions, only: [ :index, :show, :new, :create ]
+  resources :customers, only: [ :index, :show ]
 
   resource :session
   resource :registration

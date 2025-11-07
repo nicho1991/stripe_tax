@@ -17,10 +17,22 @@ interface Payment {
   customer_id: string | null
   customer_email: string | null
   customer_name: string | null
+  customer_link: string | null
   eu_classification: 'undetermined' | 'eu' | 'non_eu'
   has_transaction: boolean
   transaction_id: number | null
   location_confidence_score: number
+  enhanced_location_confidence_score: number
+  inferred_fields: string[]
+  inferred_data: {
+    card_address_country?: string
+    card_issue_country?: string
+    shipping_address_country?: string
+  }
+  customer_influenced_eu_classification: 'undetermined' | 'eu' | 'non_eu'
+  card_address_country: string | null
+  card_issue_country: string | null
+  shipping_address_country: string | null
 }
 
 interface Payout {
@@ -378,14 +390,45 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
                         <code className="text-xs">{payment.stripe_id}</code>
                       </td>
                       <td>
-                        {payment.customer_name || payment.customer_email || 'N/A'}
+                        {payment.customer_link ? (
+                          <Link
+                            href={payment.customer_link}
+                            className="link link-info"
+                          >
+                            {payment.customer_name || payment.customer_email || payment.customer_id || 'View Customer'}
+                          </Link>
+                        ) : (
+                          payment.customer_name || payment.customer_email || 'N/A'
+                        )}
                       </td>
-                      <td>{getEuClassificationBadge(payment.eu_classification)}</td>
                       <td>
                         {payment.has_transaction ? (
-                          <span className="badge badge-outline">
-                            {payment.location_confidence_score}/3
-                          </span>
+                          payment.customer_influenced_eu_classification !== payment.eu_classification ? (
+                            <div className="flex items-center gap-1">
+                              {getEuClassificationBadge(payment.customer_influenced_eu_classification)}
+                              <span className="text-xs text-info" title="Customer-influenced (different from original)">
+                                *
+                              </span>
+                            </div>
+                          ) : (
+                            getEuClassificationBadge(payment.customer_influenced_eu_classification)
+                          )
+                        ) : (
+                          getEuClassificationBadge(payment.eu_classification)
+                        )}
+                      </td>
+                      <td>
+                        {payment.has_transaction ? (
+                          payment.enhanced_location_confidence_score > payment.location_confidence_score ? (
+                            <span className="badge badge-info" title="Enhanced using other customer transactions">
+                              {payment.enhanced_location_confidence_score}/3
+                              <span className="text-xs ml-1">↑</span>
+                            </span>
+                          ) : (
+                            <span className="badge badge-outline">
+                              {payment.enhanced_location_confidence_score}/3
+                            </span>
+                          )
                         ) : (
                           <span className="text-gray-400 text-sm">-</span>
                         )}

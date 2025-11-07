@@ -86,6 +86,9 @@ class TransactionsController < ApplicationController
   private
 
   def transaction_props(transaction)
+    customer_id = transaction.payment&.customer_id
+    customer_link = customer_id.present? ? customer_path(customer_id) : nil
+
     {
       id: transaction.id,
       transaction_id: transaction.transaction_id,
@@ -98,11 +101,15 @@ class TransactionsController < ApplicationController
       location_confidence_score: transaction.location_confidence_score,
       eu_classification: transaction.eu_classification,
       has_payment: transaction.payment.present?,
-      payment_id: transaction.payment&.id
+      payment_id: transaction.payment&.id,
+      customer_id: customer_id,
+      customer_link: customer_link
     }
   end
 
   def payment_props(payment)
+    customer_link = payment.customer_id.present? ? customer_path(payment.customer_id) : nil
+
     {
       id: payment.id,
       type: payment.type,
@@ -119,6 +126,7 @@ class TransactionsController < ApplicationController
       customer_id: payment.customer_id,
       customer_email: payment.customer_email,
       customer_name: payment.customer_name,
+      customer_link: customer_link,
       eu_classification: payment.eu_classification,
       payout_id: payment.payout_id
     }

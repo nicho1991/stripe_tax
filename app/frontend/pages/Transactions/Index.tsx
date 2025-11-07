@@ -14,6 +14,8 @@ interface Transaction {
   eu_classification: 'undetermined' | 'eu' | 'non_eu'
   has_payment: boolean
   payment_id: number | null
+  customer_id: string | null
+  customer_link: string | null
 }
 
 interface Props {
@@ -107,6 +109,7 @@ export default function Index({ transactions, filters }: Props) {
                   <th>Card Country</th>
                   <th>Card Issue</th>
                   <th>Shipping Country</th>
+                  <th>Customer</th>
                   <th>Has Payment</th>
                   <th>Actions</th>
                 </tr>
@@ -130,6 +133,18 @@ export default function Index({ transactions, filters }: Props) {
                     <td>{transaction.card_address_country || '-'}</td>
                     <td>{transaction.card_issue_country || '-'}</td>
                     <td>{transaction.shipping_address_country || '-'}</td>
+                    <td>
+                      {transaction.customer_link ? (
+                        <Link
+                          href={transaction.customer_link}
+                          className="badge badge-info"
+                        >
+                          View Customer
+                        </Link>
+                      ) : (
+                        <span className="badge badge-ghost">-</span>
+                      )}
+                    </td>
                     <td>
                       {transaction.has_payment ? (
                         <Link
