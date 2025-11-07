@@ -15,6 +15,7 @@ interface Transaction {
   payment_id: number | null
   customer_id: string | null
   customer_link: string | null
+  raw_data: any
 }
 
 interface Payment {
@@ -268,6 +269,20 @@ export default function Show({ transaction, payment }: Props) {
             <div className="card-body">
               <h2 className="card-title">Linked Payment</h2>
               <p className="text-gray-400">No payment linked to this transaction.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Raw Data */}
+        {transaction.raw_data && (
+          <div className="card bg-base-100 shadow-xl mt-6">
+            <div className="card-body">
+              <h2 className="card-title">Raw Data</h2>
+              <div className="mt-4">
+                <pre className="bg-base-200 p-4 rounded-lg overflow-x-auto text-sm">
+                  <code>{JSON.stringify(transaction.raw_data, null, 2)}</code>
+                </pre>
+              </div>
             </div>
           </div>
         )}

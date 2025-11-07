@@ -7,15 +7,15 @@ interface Transaction {
   created_at_stripe: string
   status: string | null
   decline_reason: string | null
-  card_address_country: string | null
-  card_issue_country: string | null
-  shipping_address_country: string | null
   location_confidence_score: number
   eu_classification: 'undetermined' | 'eu' | 'non_eu'
   has_payment: boolean
   payment_id: number | null
   customer_id: string | null
   customer_link: string | null
+  amount: number | null
+  fees: number | null
+  currency: string | null
 }
 
 interface Props {
@@ -36,6 +36,15 @@ export default function Index({ transactions, filters }: Props) {
       hour: '2-digit',
       minute: '2-digit',
     })
+  }
+
+  const formatCurrency = (amount: number | null, currency: string | null = 'USD') => {
+    if (amount === null) return '-'
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency || 'USD',
+      minimumFractionDigits: 2,
+    }).format(amount)
   }
 
   const getEuClassificationBadge = (classification: string) => {
@@ -103,12 +112,10 @@ export default function Index({ transactions, filters }: Props) {
                 <tr>
                   <th>Transaction ID</th>
                   <th>Date</th>
-                  <th>Status</th>
                   <th>EU Classification</th>
                   <th>Confidence</th>
-                  <th>Card Country</th>
-                  <th>Card Issue</th>
-                  <th>Shipping Country</th>
+                  <th>Amount</th>
+                  <th>Fees</th>
                   <th>Customer</th>
                   <th>Has Payment</th>
                   <th>Actions</th>
@@ -119,20 +126,14 @@ export default function Index({ transactions, filters }: Props) {
                   <tr key={transaction.id}>
                     <td className="font-mono text-sm">{transaction.transaction_id}</td>
                     <td>{formatDate(transaction.created_at_stripe)}</td>
-                    <td>
-                      <span className={`badge ${transaction.status === 'Paid' ? 'badge-success' : 'badge-error'}`}>
-                        {transaction.status || 'Unknown'}
-                      </span>
-                    </td>
                     <td>{getEuClassificationBadge(transaction.eu_classification)}</td>
                     <td>
                       <span className="badge badge-outline">
                         {transaction.location_confidence_score}/3
                       </span>
                     </td>
-                    <td>{transaction.card_address_country || '-'}</td>
-                    <td>{transaction.card_issue_country || '-'}</td>
-                    <td>{transaction.shipping_address_country || '-'}</td>
+                    <td>{formatCurrency(transaction.amount, transaction.currency)}</td>
+                    <td>{formatCurrency(transaction.fees, transaction.currency)}</td>
                     <td>
                       {transaction.customer_link ? (
                         <Link

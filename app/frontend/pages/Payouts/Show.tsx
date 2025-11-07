@@ -98,7 +98,13 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
 
   const filteredPayments = payments.filter((payment) => {
     if (filterType !== 'all' && payment.type !== filterType) return false
-    if (filterEuClassification !== 'all' && payment.eu_classification !== filterEuClassification) return false
+    if (filterEuClassification !== 'all') {
+      // Use customer-influenced classification if transaction exists, otherwise fall back to original
+      const classificationToCheck = payment.has_transaction 
+        ? payment.customer_influenced_eu_classification 
+        : payment.eu_classification
+      if (classificationToCheck !== filterEuClassification) return false
+    }
     return true
   })
 
@@ -448,7 +454,7 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
                             className="btn btn-sm btn-outline"
                             title="View detailed transaction information"
                           >
-                            View Transaction
+                            View
                           </Link>
                         ) : (
                           <span className="text-gray-400 text-sm">No transaction</span>

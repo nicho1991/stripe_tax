@@ -88,6 +88,7 @@ class TransactionsController < ApplicationController
   def transaction_props(transaction)
     customer_id = transaction.payment&.customer_id
     customer_link = customer_id.present? ? customer_path(customer_id) : nil
+    payment = transaction.payment
 
     {
       id: transaction.id,
@@ -95,15 +96,16 @@ class TransactionsController < ApplicationController
       created_at_stripe: transaction.created_at_stripe,
       status: transaction.status,
       decline_reason: transaction.decline_reason,
-      card_address_country: transaction.card_address_country,
-      card_issue_country: transaction.card_issue_country,
-      shipping_address_country: transaction.shipping_address_country,
       location_confidence_score: transaction.location_confidence_score,
       eu_classification: transaction.eu_classification,
       has_payment: transaction.payment.present?,
       payment_id: transaction.payment&.id,
       customer_id: customer_id,
-      customer_link: customer_link
+      customer_link: customer_link,
+      amount: payment ? payment.converted_amount.to_f : nil,
+      fees: payment ? payment.fees.to_f : nil,
+      currency: payment ? (payment.converted_currency || payment.currency) : nil,
+      raw_data: transaction.raw_data
     }
   end
 
