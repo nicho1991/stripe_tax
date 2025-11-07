@@ -8,8 +8,8 @@ class Payout < ApplicationRecord
   validate :period_end_after_period_start
   validate :no_overlapping_periods, on: :create
 
-  # Prevent updates after creation (immutability)
-  before_update :prevent_updates
+  # Allow name updates but prevent period date changes (immutability for period)
+  before_update :prevent_period_changes
 
   def period_overlaps?(other_payout)
     return false if other_payout.id == id
@@ -57,9 +57,12 @@ class Payout < ApplicationRecord
     end
   end
 
-  def prevent_updates
-    # before_update only runs on updates, not creates, so we can raise unconditionally
-    raise ActiveRecord::ReadOnlyRecord, "Payouts cannot be updated after creation"
+  def prevent_period_changes
+    # Only allow name changes, not period date changes
+    if period_start_changed? || period_end_changed?
+      errors.add(:base, "Period dates cannot be changed after creation")
+      throw :abort
+    end
   end
 end
 

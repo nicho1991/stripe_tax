@@ -70,7 +70,31 @@ class PayoutsController < ApplicationController
     }
   end
 
+  def update
+    payout = Current.user.payouts.find(params[:id])
+    
+    if payout.update(payout_params)
+      redirect_to payout_path(payout), notice: 'Payout renamed successfully'
+    else
+      render inertia: 'Payouts/Show', props: {
+        payout: payout_props(payout),
+        payments: payout.payments.order(created_at_stripe: :desc).map { |p| payment_props(p) },
+        errors: payout.errors.full_messages
+      }
+    end
+  end
+
+  def destroy
+    payout = Current.user.payouts.find(params[:id])
+    payout.destroy
+    redirect_to payouts_path, notice: 'Payout deleted successfully'
+  end
+
   private
+
+  def payout_params
+    params.require(:payout).permit(:name)
+  end
 
   def payout_props(payout)
     {

@@ -1,5 +1,5 @@
-import { Head, Link } from '@inertiajs/react'
-import { useState } from 'react'
+import { Head, Link, router } from '@inertiajs/react'
+import { useState, useEffect } from 'react'
 
 interface Payment {
   id: number
@@ -35,12 +35,22 @@ interface Payout {
 interface Props {
   payout: Payout
   payments: Payment[]
+  errors?: string[]
 }
 
-export default function Show({ payout, payments }: Props) {
+export default function Show({ payout, payments, errors: propErrors }: Props) {
   const [filterType, setFilterType] = useState<string>('all')
   const [sortBy, setSortBy] = useState<'date' | 'amount' | 'net'>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [showRenameModal, setShowRenameModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [newName, setNewName] = useState(payout.name)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Update name when payout changes
+  useEffect(() => {
+    setNewName(payout.name)
+  }, [payout.name])
 
   const formatCurrency = (amount: number, currency: string | null = 'USD') => {
     return new Intl.NumberFormat('en-US', {
@@ -85,6 +95,26 @@ export default function Show({ payout, payments }: Props) {
 
   const uniqueTypes = Array.from(new Set(payments.map((p) => p.type)))
 
+  const handleRename = (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    router.put(`/payouts/${payout.id}`, {
+      payout: { name: newName },
+    }, {
+      onFinish: () => {
+        setIsSubmitting(false)
+        setShowRenameModal(false)
+      },
+    })
+  }
+
+  const handleDelete = () => {
+    setIsSubmitting(true)
+    router.delete(`/payouts/${payout.id}`, {
+      onFinish: () => setIsSubmitting(false),
+    })
+  }
+
   return (
     <>
       <Head title={`Payout: ${payout.name}`} />
@@ -94,12 +124,116 @@ export default function Show({ payout, payments }: Props) {
           <Link href="/payouts" className="btn btn-ghost btn-sm mb-4">
             ← Back to Payouts
           </Link>
-          <h1 className="text-3xl font-bold">{payout.name}</h1>
-          <p className="text-gray-600 mt-2">
-            Period: {new Date(payout.period_start).toLocaleDateString()} -{' '}
-            {new Date(payout.period_end).toLocaleDateString()}
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">{payout.name}</h1>
+              <p className="text-gray-600 mt-2">
+                Period: {new Date(payout.period_start).toLocaleDateString()} -{' '}
+                {new Date(payout.period_end).toLocaleDateString()}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowRenameModal(true)}
+                className="btn btn-outline btn-sm"
+              >
+                Rename
+              </button>
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="btn btn-error btn-sm"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
+
+        {/* Rename Modal */}
+        {showRenameModal && (
+          <div className="modal modal-open">
+            <div className="modal-box">
+              <h3 className="font-bold text-lg mb-4">Rename Payout</h3>
+              {propErrors && propErrors.length > 0 && (
+                <div className="alert alert-error mb-4">
+                  <ul className="list-disc list-inside">
+                    {propErrors.map((error, index) => (
+                      <li key={index}>{error}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <form onSubmit={handleRename}>
+                <div className="form-control mb-4">
+                  <label className="label">
+                    <span className="label-text">Payout Name</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    className="input input-bordered w-full"
+                    required
+                    autoFocus
+                  />
+                </div>
+                <div className="modal-action">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowRenameModal(false)
+                      setNewName(payout.name)
+                    }}
+                    className="btn btn-ghost"
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={isSubmitting || !newName.trim()}
+                  >
+                    {isSubmitting ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </form>
+            </div>
+            <div className="modal-backdrop" onClick={() => setShowRenameModal(false)}></div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && (
+          <div className="modal modal-open">
+            <div className="modal-box">
+              <h3 className="font-bold text-lg mb-4">Delete Payout</h3>
+              <p className="mb-4">
+                Are you sure you want to delete <strong>{payout.name}</strong>? This will
+                permanently delete the payout and all {payout.payments_count} associated payments.
+                This action cannot be undone.
+              </p>
+              <div className="modal-action">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteModal(false)}
+                  className="btn btn-ghost"
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="btn btn-error"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Deleting...' : 'Delete Payout'}
+                </button>
+              </div>
+            </div>
+            <div className="modal-backdrop" onClick={() => setShowDeleteModal(false)}></div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="stat bg-base-200 rounded-lg shadow">
