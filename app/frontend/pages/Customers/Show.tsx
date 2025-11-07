@@ -32,6 +32,7 @@ interface Transaction {
 interface Summary {
   transaction_count: number
   total_amount: number
+  primary_currency: string
   eu_count: number
   non_eu_count: number
   undetermined_count: number
@@ -138,8 +139,8 @@ export default function Show({ customer, transactions, summary }: Props) {
             <div className="stat-value text-2xl">{summary.transaction_count}</div>
           </div>
           <div className="stat bg-base-200 rounded-lg">
-            <div className="stat-title">Total Amount</div>
-            <div className="stat-value text-2xl">{formatCurrency(summary.total_amount)}</div>
+            <div className="stat-title">Total Amount ({summary.primary_currency})</div>
+            <div className="stat-value text-2xl">{formatCurrency(summary.total_amount, summary.primary_currency)}</div>
           </div>
           <div className="stat bg-base-200 rounded-lg">
             <div className="stat-title">EU Transactions</div>

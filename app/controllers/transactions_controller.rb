@@ -100,6 +100,7 @@ class TransactionsController < ApplicationController
       eu_classification: transaction.eu_classification,
       has_payment: transaction.payment.present?,
       payment_id: transaction.payment&.id,
+      payout_id: payment ? payment.payout_id : nil,
       customer_id: customer_id,
       customer_link: customer_link,
       amount: payment ? payment.converted_amount.to_f : nil,

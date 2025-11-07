@@ -11,6 +11,7 @@ interface Transaction {
   eu_classification: 'undetermined' | 'eu' | 'non_eu'
   has_payment: boolean
   payment_id: number | null
+  payout_id: number | null
   customer_id: string | null
   customer_link: string | null
   amount: number | null
@@ -147,9 +148,9 @@ export default function Index({ transactions, filters }: Props) {
                       )}
                     </td>
                     <td>
-                      {transaction.has_payment ? (
+                      {transaction.has_payment && transaction.payout_id ? (
                         <Link
-                          href={`/payouts/${transaction.payment_id}`}
+                          href={`/payouts/${transaction.payout_id}`}
                           className="badge badge-info"
                         >
                           Yes

@@ -6,6 +6,7 @@ interface Customer {
   customer_email: string | null
   transaction_count: number
   total_amount: number
+  primary_currency: string
   eu_classification_summary: 'undetermined' | 'eu' | 'non_eu'
 }
 
@@ -74,7 +75,7 @@ export default function Index({ customers }: Props) {
                     <td className="font-mono text-sm">{customer.customer_id}</td>
                     <td>{customer.customer_email || '-'}</td>
                     <td>{customer.transaction_count}</td>
-                    <td>{formatCurrency(customer.total_amount)}</td>
+                    <td>{formatCurrency(customer.total_amount, customer.primary_currency)}</td>
                     <td>{getEuClassificationBadge(customer.eu_classification_summary)}</td>
                     <td>
                       <Link

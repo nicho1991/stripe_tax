@@ -108,6 +108,11 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
     return true
   })
 
+  // Calculate filtered stats
+  const filteredTotalAmount = filteredPayments.reduce((sum, p) => sum + p.converted_amount, 0)
+  const filteredTotalFees = filteredPayments.reduce((sum, p) => sum + p.fees, 0)
+  const filteredTotalNet = filteredPayments.reduce((sum, p) => sum + p.net, 0)
+
   const sortedPayments = [...filteredPayments].sort((a, b) => {
     let comparison = 0
     switch (sortBy) {
@@ -270,21 +275,28 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="stat bg-base-200 rounded-lg shadow">
-            <div className="stat-title">Total Amount ({payout.primary_currency})</div>
+            <div className="stat-title">
+              Total Amount ({payout.primary_currency})
+              {filteredPayments.length !== payments.length && (
+                <span className="text-xs font-normal text-gray-500 ml-2">
+                  ({filteredPayments.length} of {payments.length})
+                </span>
+              )}
+            </div>
             <div className="stat-value text-2xl">
-              {formatCurrency(payout.total_amount, payout.primary_currency)}
+              {formatCurrency(filteredTotalAmount, payout.primary_currency)}
             </div>
           </div>
           <div className="stat bg-base-200 rounded-lg shadow">
             <div className="stat-title">Total Fees ({payout.primary_currency})</div>
             <div className="stat-value text-2xl text-warning">
-              {formatCurrency(payout.total_fees, payout.primary_currency)}
+              {formatCurrency(filteredTotalFees, payout.primary_currency)}
             </div>
           </div>
           <div className="stat bg-base-200 rounded-lg shadow">
             <div className="stat-title">Total Net ({payout.primary_currency})</div>
             <div className="stat-value text-2xl text-success">
-              {formatCurrency(payout.total_net, payout.primary_currency)}
+              {formatCurrency(filteredTotalNet, payout.primary_currency)}
             </div>
           </div>
         </div>

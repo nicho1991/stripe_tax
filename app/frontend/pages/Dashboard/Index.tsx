@@ -51,55 +51,80 @@ export default function Index({ recent_payouts, total_payouts }: Props) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <div className="card bg-base-100 shadow-xl">
-            <div className="card-body">
-              <h2 className="card-title">Upload Payout CSV</h2>
-              <p>Upload your Stripe payout CSV file to get started.</p>
-              <div className="card-actions justify-end">
-                <Link href="/payouts/new" className="btn btn-primary">
-                  Upload
-                </Link>
+        {/* Upload Section */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold mb-4">Upload Data</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="card bg-base-100 shadow-xl">
+              <div className="card-body">
+                <h3 className="card-title">Upload Payout CSV</h3>
+                <p>Upload your Stripe payout CSV file to get started.</p>
+                <div className="card-actions justify-end">
+                  <Link href="/payouts/new" className="btn btn-primary">
+                    Upload
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            <div className="card bg-base-100 shadow-xl">
+              <div className="card-body">
+                <h3 className="card-title">Upload Transactions CSV</h3>
+                <p>Upload detailed Stripe transaction data for EU classification.</p>
+                <div className="card-actions justify-end">
+                  <Link href="/transactions/new" className="btn btn-primary">
+                    Upload
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="card bg-base-100 shadow-xl">
-            <div className="card-body">
-              <h2 className="card-title">View All Payouts</h2>
-              <p>View and manage all your payout periods.</p>
-              <div className="card-actions justify-end">
-                <Link href="/payouts" className="btn btn-primary">
-                  View Payouts
-                </Link>
+        {/* View Section */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold mb-4">View Data</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="card bg-base-100 shadow-xl">
+              <div className="card-body">
+                <h3 className="card-title">View Payouts</h3>
+                <p>View and manage all your payout periods.</p>
+                <div className="card-actions justify-end">
+                  <Link href="/payouts" className="btn btn-primary">
+                    View Payouts
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            <div className="card bg-base-100 shadow-xl">
+              <div className="card-body">
+                <h3 className="card-title">View Transactions</h3>
+                <p>View and manage all your transactions with EU classification.</p>
+                <div className="card-actions justify-end">
+                  <Link href="/transactions" className="btn btn-primary">
+                    View Transactions
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            <div className="card bg-base-100 shadow-xl">
+              <div className="card-body">
+                <h3 className="card-title">View Customers</h3>
+                <p>View customer profiles and their transaction history.</p>
+                <div className="card-actions justify-end">
+                  <Link href="/customers" className="btn btn-primary">
+                    View Customers
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="card bg-base-100 shadow-xl">
-            <div className="card-body">
-              <h2 className="card-title">Upload Transactions CSV</h2>
-              <p>Upload detailed Stripe transaction data for EU classification.</p>
-              <div className="card-actions justify-end">
-                <Link href="/transactions/new" className="btn btn-primary">
-                  Upload
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          <div className="card bg-base-100 shadow-xl">
-            <div className="card-body">
-              <h2 className="card-title">View Transactions</h2>
-              <p>View and manage all your transactions with EU classification.</p>
-              <div className="card-actions justify-end">
-                <Link href="/transactions" className="btn btn-primary">
-                  View Transactions
-                </Link>
-              </div>
-            </div>
-          </div>
-
+        {/* Statistics */}
+        <div className="mb-8">
           <div className="card bg-base-100 shadow-xl">
             <div className="card-body">
               <h2 className="card-title">Statistics</h2>

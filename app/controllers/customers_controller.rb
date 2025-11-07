@@ -17,8 +17,11 @@ class CustomersController < ApplicationController
       customer_id = customer_data.customer_id
       transactions = Payment.transactions_for_customer(customer_id, Current.user)
       
-      # Get EU classifications from transactions
-      classifications = transactions.pluck(:eu_classification).compact
+      # Get customer-influenced EU classifications from transactions
+      classifications = transactions.map do |transaction|
+        classification = transaction.customer_influenced_eu_classification
+        classification[:customer_influenced].to_s
+      end.compact
       
       # Determine most common classification
       eu_classification_summary = if classifications.empty?
@@ -26,12 +29,18 @@ class CustomersController < ApplicationController
       else
         classification_counts = classifications.group_by(&:itself).transform_values(&:count)
         most_common = classification_counts.max_by { |_, count| count }&.first
-        case most_common
-        when 1 then 'eu'
-        when 2 then 'non_eu'
-        else 'undetermined'
-        end
+        most_common || 'undetermined'
       end
+
+      # Get primary currency for this customer's payments
+      customer_payments = Payment.joins(:payout)
+                                 .where(payouts: { user_id: Current.user.id })
+                                 .where(customer_id: customer_id)
+      primary_currency = customer_payments.where.not(converted_currency: nil)
+                                          .first&.converted_currency ||
+                         customer_payments.where.not(currency: nil)
+                                          .first&.currency ||
+                         'USD'
 
       {
         customer_id: customer_id,
@@ -39,6 +48,7 @@ class CustomersController < ApplicationController
         customer_email: customer_data.customer_email,
         transaction_count: transactions.count,
         total_amount: customer_data.total_amount.to_f,
+        primary_currency: primary_currency,
         eu_classification_summary: eu_classification_summary
       }
     end
@@ -101,7 +111,16 @@ class CustomersController < ApplicationController
     # Calculate customer-level summary stats
     # Get payments for these transactions to calculate total amount
     payment_ids = transactions.map { |t| t.payment&.id }.compact
-    total_amount = Payment.where(id: payment_ids).sum(:converted_amount).to_f
+    customer_payments = Payment.where(id: payment_ids)
+    total_amount = customer_payments.sum(:converted_amount).to_f
+    
+    # Get primary currency for this customer's payments
+    primary_currency = customer_payments.where.not(converted_currency: nil)
+                                      .first&.converted_currency ||
+                       customer_payments.where.not(currency: nil)
+                                      .first&.currency ||
+                       'USD'
+    
     eu_count = transactions.where(eu_classification: :eu).count
     non_eu_count = transactions.where(eu_classification: :non_eu).count
     undetermined_count = transactions.where(eu_classification: :undetermined).count
@@ -112,6 +131,7 @@ class CustomersController < ApplicationController
       summary: {
         transaction_count: transactions.count,
         total_amount: total_amount,
+        primary_currency: primary_currency,
         eu_count: eu_count,
         non_eu_count: non_eu_count,
         undetermined_count: undetermined_count
