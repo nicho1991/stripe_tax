@@ -1,8 +1,22 @@
 class PayoutsController < ApplicationController
   def index
     payouts = Current.user.payouts.order(created_at: :desc)
+    
+    # Pagination
+    page = params[:page]&.to_i || 1
+    per_page = 25
+    total_count = payouts.count
+    total_pages = (total_count.to_f / per_page).ceil
+    paginated_payouts = payouts.limit(per_page).offset((page - 1) * per_page)
+
     render inertia: 'Payouts/Index', props: {
-      payouts: payouts.map { |p| payout_props(p) }
+      payouts: paginated_payouts.map { |p| payout_props(p) },
+      pagination: {
+        current_page: page,
+        total_pages: total_pages,
+        total_count: total_count,
+        per_page: per_page
+      }
     }
   end
 

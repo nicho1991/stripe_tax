@@ -53,8 +53,21 @@ class CustomersController < ApplicationController
       }
     end
 
+    # Pagination
+    page = params[:page]&.to_i || 1
+    per_page = 25
+    total_count = customers.count
+    total_pages = (total_count.to_f / per_page).ceil
+    paginated_customers = customers[(page - 1) * per_page, per_page] || []
+
     render inertia: 'Customers/Index', props: {
-      customers: customers
+      customers: paginated_customers,
+      pagination: {
+        current_page: page,
+        total_pages: total_pages,
+        total_count: total_count,
+        per_page: per_page
+      }
     }
   end
 

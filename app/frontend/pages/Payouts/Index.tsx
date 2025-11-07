@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react'
+import { Head, Link, router } from '@inertiajs/react'
 
 interface Payout {
   id: number
@@ -13,11 +13,19 @@ interface Payout {
   created_at: string
 }
 
-interface Props {
-  payouts: Payout[]
+interface Pagination {
+  current_page: number
+  total_pages: number
+  total_count: number
+  per_page: number
 }
 
-export default function Index({ payouts }: Props) {
+interface Props {
+  payouts: Payout[]
+  pagination: Pagination
+}
+
+export default function Index({ payouts, pagination }: Props) {
   const formatCurrency = (amount: number, currency: string = 'USD') => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -32,6 +40,10 @@ export default function Index({ payouts }: Props) {
       month: 'short',
       day: 'numeric',
     })
+  }
+
+  const handlePageChange = (page: number) => {
+    router.get('/payouts', { page }, { preserveState: true })
   }
 
   return (
@@ -97,6 +109,29 @@ export default function Index({ payouts }: Props) {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {pagination.total_pages > 1 && (
+          <div className="flex justify-center items-center gap-2 mt-6">
+            <button
+              onClick={() => handlePageChange(pagination.current_page - 1)}
+              disabled={pagination.current_page === 1}
+              className="btn btn-sm"
+            >
+              Previous
+            </button>
+            <span className="text-sm">
+              Page {pagination.current_page} of {pagination.total_pages} ({pagination.total_count} total)
+            </span>
+            <button
+              onClick={() => handlePageChange(pagination.current_page + 1)}
+              disabled={pagination.current_page >= pagination.total_pages}
+              className="btn btn-sm"
+            >
+              Next
+            </button>
           </div>
         )}
       </div>

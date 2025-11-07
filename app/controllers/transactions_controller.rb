@@ -7,10 +7,23 @@ class TransactionsController < ApplicationController
       transactions = transactions.where(eu_classification: params[:eu_classification])
     end
 
+    # Pagination
+    page = params[:page]&.to_i || 1
+    per_page = 25
+    total_count = transactions.count
+    total_pages = (total_count.to_f / per_page).ceil
+    paginated_transactions = transactions.limit(per_page).offset((page - 1) * per_page)
+
     render inertia: 'Transactions/Index', props: {
-      transactions: transactions.map { |t| transaction_props(t) },
+      transactions: paginated_transactions.map { |t| transaction_props(t) },
       filters: {
         eu_classification: params[:eu_classification]
+      },
+      pagination: {
+        current_page: page,
+        total_pages: total_pages,
+        total_count: total_count,
+        per_page: per_page
       }
     }
   end

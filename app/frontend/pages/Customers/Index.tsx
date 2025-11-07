@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react'
+import { Head, Link, router } from '@inertiajs/react'
 
 interface Customer {
   customer_id: string
@@ -10,11 +10,19 @@ interface Customer {
   eu_classification_summary: 'undetermined' | 'eu' | 'non_eu'
 }
 
-interface Props {
-  customers: Customer[]
+interface Pagination {
+  current_page: number
+  total_pages: number
+  total_count: number
+  per_page: number
 }
 
-export default function Index({ customers }: Props) {
+interface Props {
+  customers: Customer[]
+  pagination: Pagination
+}
+
+export default function Index({ customers, pagination }: Props) {
   const formatCurrency = (amount: number, currency: string = 'USD') => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -36,6 +44,10 @@ export default function Index({ customers }: Props) {
     if (customer.customer_name) return customer.customer_name
     if (customer.customer_email) return customer.customer_email
     return customer.customer_id
+  }
+
+  const handlePageChange = (page: number) => {
+    router.get('/customers', { page }, { preserveState: true })
   }
 
   return (
@@ -89,6 +101,29 @@ export default function Index({ customers }: Props) {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {pagination.total_pages > 1 && (
+          <div className="flex justify-center items-center gap-2 mt-6">
+            <button
+              onClick={() => handlePageChange(pagination.current_page - 1)}
+              disabled={pagination.current_page === 1}
+              className="btn btn-sm"
+            >
+              Previous
+            </button>
+            <span className="text-sm">
+              Page {pagination.current_page} of {pagination.total_pages} ({pagination.total_count} total)
+            </span>
+            <button
+              onClick={() => handlePageChange(pagination.current_page + 1)}
+              disabled={pagination.current_page >= pagination.total_pages}
+              className="btn btn-sm"
+            >
+              Next
+            </button>
           </div>
         )}
       </div>

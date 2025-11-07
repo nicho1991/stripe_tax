@@ -19,14 +19,22 @@ interface Transaction {
   currency: string | null
 }
 
+interface Pagination {
+  current_page: number
+  total_pages: number
+  total_count: number
+  per_page: number
+}
+
 interface Props {
   transactions: Transaction[]
   filters: {
     eu_classification?: string
   }
+  pagination: Pagination
 }
 
-export default function Index({ transactions, filters }: Props) {
+export default function Index({ transactions, filters, pagination }: Props) {
   const [euFilter, setEuFilter] = useState<string>(filters.eu_classification || '')
 
   const formatDate = (dateString: string) => {
@@ -59,9 +67,17 @@ export default function Index({ transactions, filters }: Props) {
 
   const handleFilterChange = (value: string) => {
     setEuFilter(value)
-    const params: any = {}
+    const params: any = { page: 1 } // Reset to first page when filtering
     if (value) {
       params.eu_classification = value
+    }
+    router.get('/transactions', params, { preserveState: true })
+  }
+
+  const handlePageChange = (page: number) => {
+    const params: any = { page }
+    if (euFilter) {
+      params.eu_classification = euFilter
     }
     router.get('/transactions', params, { preserveState: true })
   }
@@ -171,6 +187,29 @@ export default function Index({ transactions, filters }: Props) {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {pagination.total_pages > 1 && (
+          <div className="flex justify-center items-center gap-2 mt-6">
+            <button
+              onClick={() => handlePageChange(pagination.current_page - 1)}
+              disabled={pagination.current_page === 1}
+              className="btn btn-sm"
+            >
+              Previous
+            </button>
+            <span className="text-sm">
+              Page {pagination.current_page} of {pagination.total_pages} ({pagination.total_count} total)
+            </span>
+            <button
+              onClick={() => handlePageChange(pagination.current_page + 1)}
+              disabled={pagination.current_page >= pagination.total_pages}
+              className="btn btn-sm"
+            >
+              Next
+            </button>
           </div>
         )}
       </div>
