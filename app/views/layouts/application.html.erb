@@ -38,6 +38,20 @@
   </head>
 
   <body>
+    <div class="navbar bg-base-100 shadow-lg">
+      <div class="flex-1">
+        <%= link_to "Stripe Tax", root_path, class: "btn btn-ghost text-xl" %>
+      </div>
+      <div class="flex-none">
+        <% if authenticated? %>
+          <%= link_to "Dashboard", dashboard_path, class: "btn btn-ghost" %>
+          <%= button_to "Sign Out", session_path, method: :delete, class: "btn btn-ghost" %>
+        <% else %>
+          <%= link_to "Sign In", new_session_path, class: "btn btn-ghost" %>
+          <%= link_to "Sign Up", new_registration_path, class: "btn btn-primary" %>
+        <% end %>
+      </div>
+    </div>
     <%= yield %>
   </body>
 </html>
