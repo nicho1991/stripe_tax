@@ -2,9 +2,22 @@ class TransactionsController < ApplicationController
   def index
     transactions = Current.user.transactions.order(created_at_stripe: :desc)
     
-    # Filter by EU classification if provided
+    # Filter by customer-influenced EU classification if provided
+    # We need to calculate this for all transactions first, then filter
     if params[:eu_classification].present?
-      transactions = transactions.where(eu_classification: params[:eu_classification])
+      filtered_transactions = transactions.select do |transaction|
+        classification = transaction.customer_influenced_eu_classification
+        customer_influenced = classification[:customer_influenced]
+        # Convert enum value to string for comparison
+        filter_value = case params[:eu_classification]
+        when '0' then :undetermined
+        when '1' then :eu
+        when '2' then :non_eu
+        else params[:eu_classification]
+        end
+        customer_influenced.to_s == filter_value.to_s
+      end
+      transactions = Transaction.where(id: filtered_transactions.map(&:id)).order(created_at_stripe: :desc)
     end
 
     # Pagination
@@ -103,6 +116,10 @@ class TransactionsController < ApplicationController
     customer_link = customer_id.present? ? customer_path(customer_id) : nil
     payment = transaction.payment
 
+    # Get enhanced location confidence and customer-influenced EU classification
+    enhancement = transaction.enhanced_location_confidence
+    classification = transaction.customer_influenced_eu_classification
+
     {
       id: transaction.id,
       transaction_id: transaction.transaction_id,
@@ -110,7 +127,9 @@ class TransactionsController < ApplicationController
       status: transaction.status,
       decline_reason: transaction.decline_reason,
       location_confidence_score: transaction.location_confidence_score,
+      enhanced_location_confidence_score: enhancement[:enhanced_score],
       eu_classification: transaction.eu_classification,
+      customer_influenced_eu_classification: classification[:customer_influenced],
       has_payment: transaction.payment.present?,
       payment_id: transaction.payment&.id,
       payout_id: payment ? payment.payout_id : nil,

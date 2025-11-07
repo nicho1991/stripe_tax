@@ -8,7 +8,9 @@ interface Transaction {
   status: string | null
   decline_reason: string | null
   location_confidence_score: number
+  enhanced_location_confidence_score: number
   eu_classification: 'undetermined' | 'eu' | 'non_eu'
+  customer_influenced_eu_classification: 'undetermined' | 'eu' | 'non_eu'
   has_payment: boolean
   payment_id: number | null
   payout_id: number | null
@@ -143,11 +145,29 @@ export default function Index({ transactions, filters, pagination }: Props) {
                   <tr key={transaction.id}>
                     <td className="font-mono text-sm">{transaction.transaction_id}</td>
                     <td>{formatDate(transaction.created_at_stripe)}</td>
-                    <td>{getEuClassificationBadge(transaction.eu_classification)}</td>
                     <td>
-                      <span className="badge badge-outline">
-                        {transaction.location_confidence_score}/3
-                      </span>
+                      {transaction.customer_influenced_eu_classification !== transaction.eu_classification ? (
+                        <div className="flex items-center gap-1">
+                          {getEuClassificationBadge(transaction.customer_influenced_eu_classification)}
+                          <span className="text-xs text-info" title="Customer-influenced (different from original)">
+                            *
+                          </span>
+                        </div>
+                      ) : (
+                        getEuClassificationBadge(transaction.customer_influenced_eu_classification)
+                      )}
+                    </td>
+                    <td>
+                      {transaction.enhanced_location_confidence_score > transaction.location_confidence_score ? (
+                        <span className="badge badge-info" title="Enhanced using other customer transactions">
+                          {transaction.enhanced_location_confidence_score}/3
+                          <span className="text-xs ml-1">↑</span>
+                        </span>
+                      ) : (
+                        <span className="badge badge-outline">
+                          {transaction.enhanced_location_confidence_score}/3
+                        </span>
+                      )}
                     </td>
                     <td>{formatCurrency(transaction.amount, transaction.currency)}</td>
                     <td>{formatCurrency(transaction.fees, transaction.currency)}</td>
