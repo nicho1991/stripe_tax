@@ -13,12 +13,20 @@ interface Payout {
   created_at: string
 }
 
+interface Totals {
+  total_amount: number
+  total_fees: number
+  total_net: number
+  primary_currency: string
+}
+
 interface Props {
   recent_payouts: Payout[]
   total_payouts: number
+  totals: Totals
 }
 
-export default function Index({ recent_payouts, total_payouts }: Props) {
+export default function Index({ recent_payouts, total_payouts, totals }: Props) {
   const formatCurrency = (amount: number, currency: string = 'USD') => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -125,11 +133,29 @@ export default function Index({ recent_payouts, total_payouts }: Props) {
 
         {/* Statistics */}
         <div className="mb-8">
-          <div className="card bg-base-100 shadow-xl">
-            <div className="card-body">
-              <h2 className="card-title">Statistics</h2>
-              <p className="text-2xl font-bold">{total_payouts}</p>
-              <p className="text-sm text-gray-600">Total Payouts</p>
+          <h2 className="text-2xl font-bold mb-4">Payout Totals</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="stat bg-base-200 rounded-lg shadow">
+              <div className="stat-title">Total Payouts</div>
+              <div className="stat-value text-2xl">{total_payouts}</div>
+            </div>
+            <div className="stat bg-base-200 rounded-lg shadow">
+              <div className="stat-title">Total Amount from Payouts ({totals.primary_currency})</div>
+              <div className="stat-value text-2xl">
+                {formatCurrency(totals.total_amount, totals.primary_currency)}
+              </div>
+            </div>
+            <div className="stat bg-base-200 rounded-lg shadow">
+              <div className="stat-title">Total Fees from Payouts ({totals.primary_currency})</div>
+              <div className="stat-value text-2xl text-warning">
+                {formatCurrency(totals.total_fees, totals.primary_currency)}
+              </div>
+            </div>
+            <div className="stat bg-base-200 rounded-lg shadow">
+              <div className="stat-title">Total Net from Payouts ({totals.primary_currency})</div>
+              <div className="stat-value text-2xl text-success">
+                {formatCurrency(totals.total_net, totals.primary_currency)}
+              </div>
             </div>
           </div>
         </div>
