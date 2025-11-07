@@ -17,6 +17,7 @@ interface Totals {
   total_amount: number
   total_fees: number
   total_net: number
+  total_payments: number
   primary_currency: string
 }
 
@@ -134,10 +135,14 @@ export default function Index({ recent_payouts, total_payouts, totals }: Props) 
         {/* Statistics */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold mb-4">Payout Totals</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
             <div className="stat bg-base-200 rounded-lg shadow">
               <div className="stat-title">Total Payouts</div>
               <div className="stat-value text-2xl">{total_payouts}</div>
+            </div>
+            <div className="stat bg-base-200 rounded-lg shadow">
+              <div className="stat-title">Total Payments</div>
+              <div className="stat-value text-2xl">{totals.total_payments}</div>
             </div>
             <div className="stat bg-base-200 rounded-lg shadow">
               <div className="stat-title">Total Amount from Payouts ({totals.primary_currency})</div>

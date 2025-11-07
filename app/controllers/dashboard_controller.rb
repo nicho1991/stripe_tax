@@ -7,6 +7,7 @@ class DashboardController < ApplicationController
     total_amount = all_payouts.sum(&:total_amount).to_f
     total_fees = all_payouts.sum(&:total_fees).to_f
     total_net = all_payouts.sum(&:total_net).to_f
+    total_payments = Payment.joins(:payout).where(payouts: { user_id: Current.user.id }).count
     
     # Get primary currency (most common currency across payouts)
     primary_currency = all_payouts.map(&:primary_currency).compact.group_by(&:itself).max_by { |_, v| v.length }&.first || 'USD'
@@ -18,6 +19,7 @@ class DashboardController < ApplicationController
         total_amount: total_amount,
         total_fees: total_fees,
         total_net: total_net,
+        total_payments: total_payments,
         primary_currency: primary_currency
       }
     }
