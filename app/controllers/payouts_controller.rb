@@ -127,7 +127,8 @@ class PayoutsController < ApplicationController
       details: payment.details,
       customer_id: payment.customer_id,
       customer_email: payment.customer_email,
-      customer_name: payment.customer_name
+      customer_name: payment.customer_name,
+      eu_classification: payment.eu_classification
     }
   end
 end

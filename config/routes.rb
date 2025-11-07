@@ -3,6 +3,7 @@ Rails.application.routes.draw do
   get "dashboard", to: "dashboard#index"
 
   resources :payouts
+  resources :transactions, only: [ :index, :show, :new, :create ]
 
   resource :session
   resource :registration

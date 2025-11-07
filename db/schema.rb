@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_07_172422) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_07_181749) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -32,6 +32,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_07_172422) do
     t.string "customer_name"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "eu_classification", default: 0, null: false
     t.index ["payout_id", "stripe_id"], name: "index_payments_on_payout_id_and_stripe_id", unique: true
     t.index ["payout_id"], name: "index_payments_on_payout_id"
     t.index ["stripe_id"], name: "index_payments_on_stripe_id"
@@ -57,6 +58,25 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_07_172422) do
     t.index ["user_id"], name: "index_sessions_on_user_id"
   end
 
+  create_table "transactions", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "transaction_id", null: false
+    t.datetime "created_at_stripe", null: false
+    t.string "status"
+    t.string "decline_reason"
+    t.string "card_address_country"
+    t.string "card_issue_country"
+    t.string "shipping_address_country"
+    t.integer "location_confidence_score", default: 0
+    t.integer "eu_classification", default: 0, null: false
+    t.jsonb "raw_data"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["eu_classification"], name: "index_transactions_on_eu_classification"
+    t.index ["transaction_id"], name: "index_transactions_on_transaction_id", unique: true
+    t.index ["user_id"], name: "index_transactions_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email_address", null: false
     t.string "password_digest", null: false
@@ -68,4 +88,5 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_07_172422) do
   add_foreign_key "payments", "payouts"
   add_foreign_key "payouts", "users"
   add_foreign_key "sessions", "users"
+  add_foreign_key "transactions", "users"
 end

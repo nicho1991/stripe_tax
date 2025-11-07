@@ -59,3 +59,5 @@ end
 gem "inertia_rails", "~> 3.11"
 
 gem "vite_rails", "~> 3.0"
+
+gem "countries"

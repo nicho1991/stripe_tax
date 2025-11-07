@@ -78,6 +78,30 @@ export default function Index({ recent_payouts, total_payouts }: Props) {
 
           <div className="card bg-base-100 shadow-xl">
             <div className="card-body">
+              <h2 className="card-title">Upload Transactions CSV</h2>
+              <p>Upload detailed Stripe transaction data for EU classification.</p>
+              <div className="card-actions justify-end">
+                <Link href="/transactions/new" className="btn btn-primary">
+                  Upload
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <div className="card bg-base-100 shadow-xl">
+            <div className="card-body">
+              <h2 className="card-title">View Transactions</h2>
+              <p>View and manage all your transactions with EU classification.</p>
+              <div className="card-actions justify-end">
+                <Link href="/transactions" className="btn btn-primary">
+                  View Transactions
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <div className="card bg-base-100 shadow-xl">
+            <div className="card-body">
               <h2 className="card-title">Statistics</h2>
               <p className="text-2xl font-bold">{total_payouts}</p>
               <p className="text-sm text-gray-600">Total Payouts</p>

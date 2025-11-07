@@ -17,6 +17,7 @@ interface Payment {
   customer_id: string | null
   customer_email: string | null
   customer_name: string | null
+  eu_classification: 'undetermined' | 'eu' | 'non_eu'
 }
 
 interface Payout {
@@ -40,6 +41,7 @@ interface Props {
 
 export default function Show({ payout, payments, errors: propErrors }: Props) {
   const [filterType, setFilterType] = useState<string>('all')
+  const [filterEuClassification, setFilterEuClassification] = useState<string>('all')
   const [sortBy, setSortBy] = useState<'date' | 'amount' | 'net'>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [showRenameModal, setShowRenameModal] = useState(false)
@@ -70,9 +72,19 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
     })
   }
 
+  const getEuClassificationBadge = (classification: string) => {
+    const badges = {
+      eu: <span className="badge badge-success badge-sm">EU</span>,
+      non_eu: <span className="badge badge-error badge-sm">Non-EU</span>,
+      undetermined: <span className="badge badge-warning badge-sm">Undetermined</span>,
+    }
+    return badges[classification as keyof typeof badges] || badges.undetermined
+  }
+
   const filteredPayments = payments.filter((payment) => {
-    if (filterType === 'all') return true
-    return payment.type === filterType
+    if (filterType !== 'all' && payment.type !== filterType) return false
+    if (filterEuClassification !== 'all' && payment.eu_classification !== filterEuClassification) return false
+    return true
   })
 
   const sortedPayments = [...filteredPayments].sort((a, b) => {
@@ -279,6 +291,22 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
 
               <div className="form-control">
                 <label className="label">
+                  <span className="label-text">Filter by EU Classification</span>
+                </label>
+                <select
+                  className="select select-bordered"
+                  value={filterEuClassification}
+                  onChange={(e) => setFilterEuClassification(e.target.value)}
+                >
+                  <option value="all">All</option>
+                  <option value="undetermined">Undetermined</option>
+                  <option value="eu">EU</option>
+                  <option value="non_eu">Non-EU</option>
+                </select>
+              </div>
+
+              <div className="form-control">
+                <label className="label">
                   <span className="label-text">Sort By</span>
                 </label>
                 <select
@@ -321,6 +349,7 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
                     <th>Date</th>
                     <th>Stripe ID</th>
                     <th>Customer</th>
+                    <th>EU Classification</th>
                     <th>Amount</th>
                     <th>Fees</th>
                     <th>Net</th>
@@ -346,6 +375,7 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
                       <td>
                         {payment.customer_name || payment.customer_email || 'N/A'}
                       </td>
+                      <td>{getEuClassificationBadge(payment.eu_classification)}</td>
                       <td>{formatCurrency(payment.amount, payment.currency)}</td>
                       <td>{formatCurrency(payment.fees, payment.converted_currency)}</td>
                       <td className="font-semibold">
