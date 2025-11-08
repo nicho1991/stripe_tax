@@ -1,4 +1,4 @@
-require 'countries'
+require "countries"
 
 class EuClassificationService
   def self.classify_country(country_code)
@@ -7,7 +7,7 @@ class EuClassificationService
     country = ISO3166::Country.find_country_by_alpha2(country_code.upcase)
     return nil unless country
 
-    country.in_eu? ? :eu : :non_eu
+    country.in_eu_vat? ? :eu : :non_eu
   end
 
   def self.calculate_confidence(transaction)
@@ -40,4 +40,3 @@ class EuClassificationService
     :undetermined
   end
 end
-
