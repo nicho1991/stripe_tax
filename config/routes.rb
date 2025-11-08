@@ -2,7 +2,13 @@ Rails.application.routes.draw do
   root "home#index"
   get "dashboard", to: "dashboard#index"
 
-  resources :payouts
+  resources :payouts do
+    member do
+      get :pdf_eu
+      get :pdf_non_eu
+      get :pdf_undetermined
+    end
+  end
   resources :transactions, only: [ :index, :show, :new, :create ]
   resources :customers, only: [ :index, :show ]
 

@@ -1,7 +1,7 @@
 class PayoutsController < ApplicationController
   def index
     payouts = Current.user.payouts.order(created_at: :desc)
-    
+
     # Pagination
     page = params[:page]&.to_i || 1
     per_page = 25
@@ -9,7 +9,7 @@ class PayoutsController < ApplicationController
     total_pages = (total_count.to_f / per_page).ceil
     paginated_payouts = payouts.limit(per_page).offset((page - 1) * per_page)
 
-    render inertia: 'Payouts/Index', props: {
+    render inertia: "Payouts/Index", props: {
       payouts: paginated_payouts.map { |p| payout_props(p) },
       pagination: {
         current_page: page,
@@ -22,14 +22,14 @@ class PayoutsController < ApplicationController
 
   def show
     payout = Current.user.payouts.find(params[:id])
-    render inertia: 'Payouts/Show', props: {
+    render inertia: "Payouts/Show", props: {
       payout: payout_props(payout),
       payments: payout.payments.order(created_at_stripe: :desc).map { |p| payment_props(p) }
     }
   end
 
   def new
-    render inertia: 'Payouts/New'
+    render inertia: "Payouts/New"
   end
 
   def create
@@ -37,13 +37,13 @@ class PayoutsController < ApplicationController
     period_name = params[:period_name]&.strip
 
     if csv_file.blank?
-      return render inertia: 'Payouts/New', props: {
-        errors: { csv_file: ['CSV file is required'] }
+      return render inertia: "Payouts/New", props: {
+        errors: { csv_file: [ "CSV file is required" ] }
       }
     end
 
     # Read CSV content with UTF-8 encoding
-    csv_content = csv_file.read.force_encoding('UTF-8')
+    csv_content = csv_file.read.force_encoding("UTF-8")
     csv_file.rewind
 
     # Parse CSV
@@ -51,7 +51,7 @@ class PayoutsController < ApplicationController
     result = parser.parse
 
     unless result[:success]
-      return render inertia: 'Payouts/New', props: {
+      return render inertia: "Payouts/New", props: {
         errors: { base: result[:errors] }
       }
     end
@@ -73,24 +73,24 @@ class PayoutsController < ApplicationController
       end
     end
 
-    redirect_to payout_path(payout), notice: 'Payout created successfully'
+    redirect_to payout_path(payout), notice: "Payout created successfully"
   rescue ActiveRecord::RecordInvalid => e
-    render inertia: 'Payouts/New', props: {
-      errors: { base: [e.record.errors.full_messages.join(', ')] }
+    render inertia: "Payouts/New", props: {
+      errors: { base: [ e.record.errors.full_messages.join(", ") ] }
     }
   rescue StandardError => e
-    render inertia: 'Payouts/New', props: {
-      errors: { base: ["An error occurred: #{e.message}"] }
+    render inertia: "Payouts/New", props: {
+      errors: { base: [ "An error occurred: #{e.message}" ] }
     }
   end
 
   def update
     payout = Current.user.payouts.find(params[:id])
-    
+
     if payout.update(payout_params)
-      redirect_to payout_path(payout), notice: 'Payout renamed successfully'
+      redirect_to payout_path(payout), notice: "Payout renamed successfully"
     else
-      render inertia: 'Payouts/Show', props: {
+      render inertia: "Payouts/Show", props: {
         payout: payout_props(payout),
         payments: payout.payments.order(created_at_stripe: :desc).map { |p| payment_props(p) },
         errors: payout.errors.full_messages
@@ -101,7 +101,19 @@ class PayoutsController < ApplicationController
   def destroy
     payout = Current.user.payouts.find(params[:id])
     payout.destroy
-    redirect_to payouts_path, notice: 'Payout deleted successfully'
+    redirect_to payouts_path, notice: "Payout deleted successfully"
+  end
+
+  def pdf_eu
+    generate_pdf(:eu, "EU")
+  end
+
+  def pdf_non_eu
+    generate_pdf(:non_eu, "Non-EU")
+  end
+
+  def pdf_undetermined
+    generate_pdf(:undetermined, "Undetermined")
   end
 
   private
@@ -132,7 +144,7 @@ class PayoutsController < ApplicationController
     enhanced_data = if transaction
       enhancement = transaction.enhanced_location_confidence
       classification = transaction.customer_influenced_eu_classification
-      
+
       {
         location_confidence_score: transaction.location_confidence_score,
         enhanced_location_confidence_score: enhancement[:enhanced_score],
@@ -180,5 +192,16 @@ class PayoutsController < ApplicationController
       **enhanced_data
     }
   end
-end
 
+  def generate_pdf(classification_type, label)
+    payout = Current.user.payouts.find(params[:id])
+    pdf_data = PayoutPdfService.generate(payout, classification_type)
+
+    filename = "#{payout.name.parameterize}-#{label.parameterize}-#{Date.current}.pdf"
+
+    send_data pdf_data,
+              filename: filename,
+              type: "application/pdf",
+              disposition: "attachment"
+  end
+end

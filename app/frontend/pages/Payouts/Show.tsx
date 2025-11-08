@@ -133,6 +133,28 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
 
   const uniqueTypes = Array.from(new Set(payments.map((p) => p.type)))
 
+  // Calculate which EU classifications exist in payments
+  const hasEuPayments = payments.some((p) => {
+    const classification = p.has_transaction 
+      ? p.customer_influenced_eu_classification 
+      : p.eu_classification
+    return classification === 'eu'
+  })
+
+  const hasNonEuPayments = payments.some((p) => {
+    const classification = p.has_transaction 
+      ? p.customer_influenced_eu_classification 
+      : p.eu_classification
+    return classification === 'non_eu'
+  })
+
+  const hasUndeterminedPayments = payments.some((p) => {
+    const classification = p.has_transaction 
+      ? p.customer_influenced_eu_classification 
+      : p.eu_classification
+    return classification === 'undetermined'
+  })
+
   const handleRename = (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -170,7 +192,34 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
                 {new Date(payout.period_end).toLocaleDateString()}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              {hasEuPayments && (
+                <a
+                  href={`/payouts/${payout.id}/pdf_eu`}
+                  className="btn btn-primary btn-sm"
+                  download
+                >
+                  Download EU PDF
+                </a>
+              )}
+              {hasNonEuPayments && (
+                <a
+                  href={`/payouts/${payout.id}/pdf_non_eu`}
+                  className="btn btn-primary btn-sm"
+                  download
+                >
+                  Download Non-EU PDF
+                </a>
+              )}
+              {hasUndeterminedPayments && (
+                <a
+                  href={`/payouts/${payout.id}/pdf_undetermined`}
+                  className="btn btn-primary btn-sm"
+                  download
+                >
+                  Download Undetermined PDF
+                </a>
+              )}
               <button
                 onClick={() => setShowRenameModal(true)}
                 className="btn btn-outline btn-sm"
