@@ -49,12 +49,35 @@ class Payout < ApplicationRecord
     return unless user_id && period_start && period_end
 
     overlapping = user.payouts.where.not(id: id).find do |payout|
-      period_overlaps?(payout)
+      period_overlaps?(payout) && !overlap_only_stripe_fees?(payout)
     end
 
     if overlapping
       errors.add(:base, "Period overlaps with existing payout: #{overlapping.name}")
     end
+  end
+
+  def overlap_only_stripe_fees?(other_payout)
+    # Calculate the overlapping date range
+    overlap_start = [period_start, other_payout.period_start].max
+    overlap_end = [period_end, other_payout.period_end].min
+
+    # For the new payout being created, payments don't exist yet, so we can't check them
+    # But we can check the existing payout (other_payout) - if it only has stripe fees
+    # in the overlap, allow it. This handles the case where November payout has a stripe
+    # fee on Dec 1 and December payout starts on Dec 1.
+    
+    # Check if other (existing) payout only has stripe fees in the overlap range
+    other_payments_in_overlap = other_payout.payments.where(
+      "DATE(created_at_stripe) >= ? AND DATE(created_at_stripe) <= ?",
+      overlap_start, overlap_end
+    )
+    
+    # If there are no payments in the overlap, it's not a real overlap concern
+    return true if other_payments_in_overlap.empty?
+    
+    # Allow overlap if the existing payout only has stripe fees in the overlapping period
+    other_payments_in_overlap.all? { |p| p.type == "Stripe Fee" }
   end
 
   def prevent_period_changes
