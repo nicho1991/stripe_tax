@@ -77,7 +77,7 @@ class Payout < ApplicationRecord
     return true if other_payments_in_overlap.empty?
     
     # Allow overlap if the existing payout only has stripe fees in the overlapping period
-    other_payments_in_overlap.all? { |p| p.type == "Stripe Fee" }
+    !other_payments_in_overlap.where.not(type: "Stripe Fee").exists?
   end
 
   def prevent_period_changes
