@@ -14,8 +14,11 @@ class Payment < ApplicationRecord
   validates :converted_amount, presence: true
   validates :fees, presence: true
   validates :net, presence: true
+  validates :manual_country_code, length: { is: 2 }, allow_nil: true
 
   scope :by_customer_id, ->(customer_id) { where(customer_id: customer_id) }
+
+  before_update :reclassify_if_manual_country_changed
 
   # Get all transactions for a customer via payments
   def self.transactions_for_customer(customer_id, user)
@@ -25,6 +28,22 @@ class Payment < ApplicationRecord
                .joins('INNER JOIN payouts ON payments.payout_id = payouts.id')
                .where(payments: { customer_id: customer_id })
                .where(payouts: { user_id: user.id })
+  end
+
+  def effective_eu_classification
+    return eu_classification unless manual_country_code.present?
+
+    classification = EuClassificationService.classify_country(manual_country_code)
+    classification ? classification : eu_classification
+  end
+
+  private
+
+  def reclassify_if_manual_country_changed
+    return unless manual_country_code_changed? && manual_country_code.present?
+
+    classification = EuClassificationService.classify_country(manual_country_code)
+    self.eu_classification = classification if classification
   end
 end
 
