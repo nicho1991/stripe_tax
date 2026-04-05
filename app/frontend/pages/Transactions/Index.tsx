@@ -9,8 +9,8 @@ interface Transaction {
   decline_reason: string | null
   location_confidence_score: number
   enhanced_location_confidence_score: number
-  eu_classification: 'undetermined' | 'eu' | 'non_eu'
-  customer_influenced_eu_classification: 'undetermined' | 'eu' | 'non_eu'
+  eu_classification: 'undetermined' | 'eu' | 'non_eu' | 'stripe_fees'
+  customer_influenced_eu_classification: 'undetermined' | 'eu' | 'non_eu' | 'stripe_fees'
   has_payment: boolean
   payment_id: number | null
   payout_id: number | null
@@ -63,6 +63,7 @@ export default function Index({ transactions, filters, pagination }: Props) {
       eu: <span className="badge badge-success">EU</span>,
       non_eu: <span className="badge badge-error">Non-EU</span>,
       undetermined: <span className="badge badge-warning">Undetermined</span>,
+      stripe_fees: <span className="badge badge-info">Stripe Fees</span>,
     }
     return badges[classification as keyof typeof badges] || badges.undetermined
   }
@@ -109,6 +110,7 @@ export default function Index({ transactions, filters, pagination }: Props) {
             <option value="0">Undetermined</option>
             <option value="1">EU</option>
             <option value="2">Non-EU</option>
+            <option value="3">Stripe Fees</option>
           </select>
         </div>
 

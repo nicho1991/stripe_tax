@@ -127,6 +127,10 @@ class PayoutsController < ApplicationController
     generate_pdf(:undetermined, "Undetermined")
   end
 
+  def pdf_stripe_fees
+    generate_pdf(:stripe_fees, "Stripe Fees")
+  end
+
   private
 
   def payout_params

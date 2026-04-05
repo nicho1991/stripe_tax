@@ -18,7 +18,7 @@ interface Payment {
   customer_email: string | null
   customer_name: string | null
   customer_link: string | null
-  eu_classification: 'undetermined' | 'eu' | 'non_eu'
+  eu_classification: 'undetermined' | 'eu' | 'non_eu' | 'stripe_fees'
   has_transaction: boolean
   transaction_id: number | null
   location_confidence_score: number
@@ -29,7 +29,7 @@ interface Payment {
     card_issue_country?: string
     shipping_address_country?: string
   }
-  customer_influenced_eu_classification: 'undetermined' | 'eu' | 'non_eu'
+  customer_influenced_eu_classification: 'undetermined' | 'eu' | 'non_eu' | 'stripe_fees'
   card_address_country: string | null
   card_issue_country: string | null
   shipping_address_country: string | null
@@ -97,6 +97,7 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
       eu: <span className="badge badge-success badge-sm">EU</span>,
       non_eu: <span className="badge badge-error badge-sm">Non-EU</span>,
       undetermined: <span className="badge badge-warning badge-sm">Undetermined</span>,
+      stripe_fees: <span className="badge badge-info badge-sm">Stripe Fees</span>,
     }
     return badges[classification as keyof typeof badges] || badges.undetermined
   }
@@ -168,6 +169,13 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
     return classification === 'non_eu'
   })
 
+  const hasStripeFeesClassificationPayments = payments.some((p) => {
+    const classification = p.has_transaction
+      ? p.customer_influenced_eu_classification
+      : p.eu_classification
+    return classification === 'stripe_fees'
+  })
+
   const hasUndeterminedPayments = payments.some((p) => {
     let classification
     if (p.manual_country_code) {
@@ -179,6 +187,8 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
     }
     return classification === 'undetermined'
   })
+
+  const hasStripeFeePayments = payments.some((p) => p.type === 'Stripe Fee')
 
   const handleRename = (e: React.FormEvent) => {
     e.preventDefault()
@@ -271,6 +281,15 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
                   download
                 >
                   Download Undetermined PDF
+                </a>
+              )}
+              {hasStripeFeePayments && (
+                <a
+                  href={`/payouts/${payout.id}/pdf_stripe_fees`}
+                  className="btn btn-primary btn-sm"
+                  download
+                >
+                  Download Stripe Fees PDF
                 </a>
               )}
               <button
@@ -437,6 +456,9 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
                   <option value="undetermined">Undetermined</option>
                   <option value="eu">EU</option>
                   <option value="non_eu">Non-EU</option>
+                  {hasStripeFeesClassificationPayments && (
+                    <option value="stripe_fees">Stripe Fees</option>
+                  )}
                 </select>
               </div>
 

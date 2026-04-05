@@ -5,7 +5,7 @@ class Payment < ApplicationRecord
   belongs_to :payout
   has_one :stripe_transaction, class_name: 'Transaction', foreign_key: :transaction_id, primary_key: :stripe_id, dependent: :nullify
 
-  enum :eu_classification, { undetermined: 0, eu: 1, non_eu: 2 }
+  enum :eu_classification, { undetermined: 0, eu: 1, non_eu: 2, stripe_fees: 3 }
 
   validates :type, presence: true
   validates :stripe_id, presence: true, uniqueness: { scope: :payout_id }
