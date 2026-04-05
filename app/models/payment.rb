@@ -56,17 +56,4 @@ class Payment < ApplicationRecord
     end
   end
 end
-<<<<<<< HEAD
-=======
-
-  def manual_country_code_must_be_valid
-    return if manual_country_code.nil?
-
-    classification = EuClassificationService.classify_country(manual_country_code)
-    if classification.nil?
-      errors.add(:manual_country_code, "must be a valid country code")
-    end
-  end
->>>>>>> 2d8fbe7 (Fix invalid country code validation bug and add manual country code UI)
-end
 
