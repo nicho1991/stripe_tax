@@ -104,6 +104,13 @@ class PayoutCsvParser
       fees = parse_decimal(fees_str)
       net = parse_decimal(net_str)
 
+      # Set EU classification based on type
+      eu_classification = if type == "Stripe Fee"
+        3 # stripe_fees
+      else
+        0 # undetermined (default for charges)
+      end
+
       if amount.nil?
         return { error: "Invalid Amount: #{amount_str}" }
       end
@@ -132,7 +139,8 @@ class PayoutCsvParser
           details: details,
           customer_id: customer_id,
           customer_email: customer_email,
-          customer_name: customer_name
+          customer_name: customer_name,
+          eu_classification: eu_classification
         }
       }
     rescue StandardError => e

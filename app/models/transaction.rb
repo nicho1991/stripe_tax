@@ -2,7 +2,7 @@ class Transaction < ApplicationRecord
   belongs_to :user
   has_one :payment, foreign_key: :stripe_id, primary_key: :transaction_id
 
-  enum :eu_classification, { undetermined: 0, eu: 1, non_eu: 2 }
+  enum :eu_classification, { undetermined: 0, eu: 1, non_eu: 2, stripe_fees: 3 }
 
   validates :transaction_id, presence: true, uniqueness: true
   validates :created_at_stripe, presence: true

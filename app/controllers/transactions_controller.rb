@@ -13,6 +13,7 @@ class TransactionsController < ApplicationController
         when '0' then :undetermined
         when '1' then :eu
         when '2' then :non_eu
+        when '3' then :stripe_fees
         else params[:eu_classification]
         end
         customer_influenced.to_s == filter_value.to_s
