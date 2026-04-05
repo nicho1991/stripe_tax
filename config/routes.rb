@@ -8,6 +8,7 @@ Rails.application.routes.draw do
       get :pdf_non_eu
       get :pdf_undetermined
       get :pdf_stripe_fees
+      post :update_payment_country
     end
   end
   resources :transactions, only: [ :index, :show, :new, :create ]

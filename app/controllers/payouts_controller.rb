@@ -98,6 +98,17 @@ class PayoutsController < ApplicationController
     end
   end
 
+  def update_payment_country
+    payout = Current.user.payouts.find(params[:id])
+    payment = payout.payments.find(params[:payment_id])
+
+    if payment.update(manual_country_code: params[:manual_country_code].presence)
+      render json: { success: true, effective_eu_classification: payment.effective_eu_classification, eu_classification: payment.eu_classification }
+    else
+      render json: { success: false, errors: payment.errors.full_messages }, status: :unprocessable_entity
+    end
+  end
+
   def destroy
     payout = Current.user.payouts.find(params[:id])
     payout.destroy
@@ -193,6 +204,8 @@ class PayoutsController < ApplicationController
       customer_link: customer_link,
       has_transaction: payment.stripe_transaction.present?,
       transaction_id: payment.stripe_transaction&.id,
+      manual_country_code: payment.manual_country_code,
+      effective_eu_classification: payment.effective_eu_classification,
       **enhanced_data
     }
   end

@@ -33,6 +33,8 @@ interface Payment {
   card_address_country: string | null
   card_issue_country: string | null
   shipping_address_country: string | null
+  manual_country_code: string | null
+  effective_eu_classification: 'undetermined' | 'eu' | 'non_eu'
 }
 
 interface Payout {
@@ -63,6 +65,9 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [newName, setNewName] = useState(payout.name)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [editingPaymentId, setEditingPaymentId] = useState<number | null>(null)
+  const [editingCountryCode, setEditingCountryCode] = useState('')
+  const [updatingPaymentId, setUpdatingPaymentId] = useState<number | null>(null)
 
   // Update name when payout changes
   useEffect(() => {
@@ -100,10 +105,15 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
   const filteredPayments = payments.filter((payment) => {
     if (filterType !== 'all' && payment.type !== filterType) return false
     if (filterEuClassification !== 'all') {
-      // Use customer-influenced classification if transaction exists, otherwise fall back to original
-      const classificationToCheck = payment.has_transaction 
-        ? payment.customer_influenced_eu_classification 
-        : payment.eu_classification
+      // Use manual country code if set, otherwise customer-influenced if transaction exists, otherwise original
+      let classificationToCheck
+      if (payment.manual_country_code) {
+        classificationToCheck = payment.effective_eu_classification
+      } else if (payment.has_transaction) {
+        classificationToCheck = payment.customer_influenced_eu_classification
+      } else {
+        classificationToCheck = payment.eu_classification
+      }
       if (classificationToCheck !== filterEuClassification) return false
     }
     return true
@@ -136,16 +146,26 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
 
   // Calculate which EU classifications exist in payments
   const hasEuPayments = payments.some((p) => {
-    const classification = p.has_transaction 
-      ? p.customer_influenced_eu_classification 
-      : p.eu_classification
+    let classification
+    if (p.manual_country_code) {
+      classification = p.effective_eu_classification
+    } else if (p.has_transaction) {
+      classification = p.customer_influenced_eu_classification
+    } else {
+      classification = p.eu_classification
+    }
     return classification === 'eu'
   })
 
   const hasNonEuPayments = payments.some((p) => {
-    const classification = p.has_transaction
-      ? p.customer_influenced_eu_classification
-      : p.eu_classification
+    let classification
+    if (p.manual_country_code) {
+      classification = p.effective_eu_classification
+    } else if (p.has_transaction) {
+      classification = p.customer_influenced_eu_classification
+    } else {
+      classification = p.eu_classification
+    }
     return classification === 'non_eu'
   })
 
@@ -157,9 +177,14 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
   })
 
   const hasUndeterminedPayments = payments.some((p) => {
-    const classification = p.has_transaction
-      ? p.customer_influenced_eu_classification
-      : p.eu_classification
+    let classification
+    if (p.manual_country_code) {
+      classification = p.effective_eu_classification
+    } else if (p.has_transaction) {
+      classification = p.customer_influenced_eu_classification
+    } else {
+      classification = p.eu_classification
+    }
     return classification === 'undetermined'
   })
 
@@ -183,6 +208,34 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
     router.delete(`/payouts/${payout.id}`, {
       onFinish: () => setIsSubmitting(false),
     })
+  }
+
+  const handleUpdateCountryCode = async (paymentId: number) => {
+    setUpdatingPaymentId(paymentId)
+    try {
+      const response = await fetch(`/payouts/${payout.id}/update_payment_country`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        },
+        body: JSON.stringify({
+          payment_id: paymentId,
+          manual_country_code: editingCountryCode,
+        }),
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        router.reload()
+      }
+    } catch (error) {
+      console.error('Error updating country code:', error)
+    } finally {
+      setUpdatingPaymentId(null)
+      setEditingPaymentId(null)
+      setEditingCountryCode('')
+    }
   }
 
   return (
@@ -447,105 +500,206 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
 
             <div className="overflow-x-auto">
               <table className="table table-zebra">
-                <thead>
-                  <tr>
-                    <th>Type</th>
-                    <th>Date</th>
-                    <th>Stripe ID</th>
-                    <th>Customer</th>
-                    <th>EU Classification</th>
-                    <th>Confidence</th>
-                    <th>Amount</th>
-                    <th>Fees</th>
-                    <th>Net</th>
-                    <th>Currency</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedPayments.map((payment) => (
-                    <tr key={payment.id}>
-                      <td>
-                        <span
-                          className={`badge ${
-                            payment.type === 'Charge' ? 'badge-success' : 'badge-warning'
-                          }`}
-                        >
-                          {payment.type}
-                        </span>
-                      </td>
-                      <td>{formatDate(payment.created_at_stripe)}</td>
-                      <td>
-                        <code className="text-xs">{payment.stripe_id}</code>
-                      </td>
-                      <td>
-                        {payment.customer_link ? (
-                          <Link
-                            href={payment.customer_link}
-                            className="link link-info"
-                          >
-                            {payment.customer_name || payment.customer_email || payment.customer_id || 'View Customer'}
-                          </Link>
-                        ) : (
-                          payment.customer_name || payment.customer_email || 'N/A'
-                        )}
-                      </td>
-                      <td>
-                        {payment.has_transaction ? (
-                          payment.customer_influenced_eu_classification !== payment.eu_classification ? (
-                            <div className="flex items-center gap-1">
-                              {getEuClassificationBadge(payment.customer_influenced_eu_classification)}
-                              <span className="text-xs text-info" title="Customer-influenced (different from original)">
-                                *
-                              </span>
-                            </div>
-                          ) : (
-                            getEuClassificationBadge(payment.customer_influenced_eu_classification)
-                          )
-                        ) : (
-                          getEuClassificationBadge(payment.eu_classification)
-                        )}
-                      </td>
-                      <td>
-                        {payment.has_transaction ? (
-                          payment.enhanced_location_confidence_score > payment.location_confidence_score ? (
-                            <span className="badge badge-info" title="Enhanced using other customer transactions">
-                              {payment.enhanced_location_confidence_score}/3
-                              <span className="text-xs ml-1">↑</span>
-                            </span>
-                          ) : (
-                            <span className="badge badge-outline">
-                              {payment.enhanced_location_confidence_score}/3
-                            </span>
-                          )
-                        ) : (
-                          <span className="text-gray-400 text-sm">-</span>
-                        )}
-                      </td>
-                      <td>{formatCurrency(payment.amount, payment.currency)}</td>
-                      <td>{formatCurrency(payment.fees, payment.converted_currency)}</td>
-                      <td className="font-semibold">
-                        {formatCurrency(payment.net, payment.converted_currency)}
-                      </td>
-                      <td>
-                        {payment.converted_currency || payment.currency || 'N/A'}
-                      </td>
-                      <td>
-                        {payment.has_transaction && payment.transaction_id ? (
-                          <Link
-                            href={`/transactions/${payment.transaction_id}`}
-                            className="btn btn-sm btn-outline"
-                            title="View detailed transaction information"
-                          >
-                            View
-                          </Link>
-                        ) : (
-                          <span className="text-gray-400 text-sm">No transaction</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
+                 <thead>
+                   <tr>
+                     <th>Type</th>
+                     <th>Date</th>
+                     <th>Stripe ID</th>
+                     <th>Customer</th>
+                     <th>Manual Country</th>
+                     <th>EU Classification</th>
+                     <th>Confidence</th>
+                     <th>Amount</th>
+                     <th>Fees</th>
+                     <th>Net</th>
+                     <th>Currency</th>
+                     <th>Actions</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                   {sortedPayments.map((payment) => {
+                     const displayClassification = payment.manual_country_code
+                       ? payment.effective_eu_classification
+                       : (payment.has_transaction ? payment.customer_influenced_eu_classification : payment.eu_classification)
+
+                     return (
+                       <tr key={payment.id}>
+                         <td>
+                           <span
+                             className={`badge ${
+                               payment.type === 'Charge' ? 'badge-success' : 'badge-warning'
+                             }`}
+                           >
+                             {payment.type}
+                           </span>
+                         </td>
+                         <td>{formatDate(payment.created_at_stripe)}</td>
+                         <td>
+                           <code className="text-xs">{payment.stripe_id}</code>
+                         </td>
+                         <td>
+                           {payment.customer_link ? (
+                             <Link
+                               href={payment.customer_link}
+                               className="link link-info"
+                             >
+                               {payment.customer_name || payment.customer_email || payment.customer_id || 'View Customer'}
+                             </Link>
+                           ) : (
+                             payment.customer_name || payment.customer_email || 'N/A'
+                           )}
+                         </td>
+                         <td>
+                           {editingPaymentId === payment.id ? (
+                             <div className="flex gap-1 items-start">
+                               <input
+                                 type="text"
+                                 list={`country-options-${payment.id}`}
+                                 className="input input-bordered input-sm w-20"
+                                 placeholder="US"
+                                 value={editingCountryCode}
+                                 onChange={(e) => setEditingCountryCode(e.target.value.toUpperCase())}
+                                 maxLength={2}
+                                 autoFocus
+                                 onKeyDown={(e) => {
+                                   if (e.key === 'Enter') {
+                                     e.preventDefault()
+                                     handleUpdateCountryCode(payment.id)
+                                   } else if (e.key === 'Escape') {
+                                     setEditingPaymentId(null)
+                                     setEditingCountryCode('')
+                                   }
+                                 }}
+                               />
+                               <datalist id={`country-options-${payment.id}`}>
+                                 {[
+                                   payment.card_issue_country,
+                                   payment.card_address_country,
+                                   payment.shipping_address_country,
+                                   ...Object.values(payment.inferred_data).filter(Boolean)
+                                 ]
+                                   .filter((code): code is string => Boolean(code))
+                                   .filter((code, index, self) => self.indexOf(code) === index)
+                                   .map((code) => (
+                                     <option key={code} value={code.toUpperCase()}>
+                                       {code.toUpperCase()}
+                                     </option>
+                                   ))}
+                               </datalist>
+                               <div className="flex gap-1">
+                                 <button
+                                   className="btn btn-sm btn-primary"
+                                   onClick={() => handleUpdateCountryCode(payment.id)}
+                                   disabled={updatingPaymentId === payment.id}
+                                 >
+                                   {updatingPaymentId === payment.id ? '...' : '✓'}
+                                 </button>
+                                 <button
+                                   className="btn btn-sm btn-ghost"
+                                   onClick={() => {
+                                     setEditingPaymentId(null)
+                                     setEditingCountryCode('')
+                                   }}
+                                 >
+                                   ✕
+                                 </button>
+                               </div>
+                             </div>
+                           ) : (
+                             <div className="flex items-center gap-1">
+                               {payment.manual_country_code ? (
+                                 <div className="flex items-center gap-1">
+                                   <code className="badge badge-info">{payment.manual_country_code.toUpperCase()}</code>
+                                   <button
+                                     className="btn btn-xs btn-ghost"
+                                     onClick={() => {
+                                       setEditingPaymentId(payment.id)
+                                       setEditingCountryCode('')
+                                     }}
+                                     title="Edit country code"
+                                   >
+                                     ✏️
+                                   </button>
+                                 </div>
+                               ) : (
+                                 <button
+                                   className="btn btn-xs btn-outline"
+                                   onClick={() => {
+                                     setEditingPaymentId(payment.id)
+                                     setEditingCountryCode('')
+                                   }}
+                                   title="Set manual country code"
+                                 >
+                                   Set
+                                 </button>
+                               )}
+                             </div>
+                           )}
+                         </td>
+                         <td>
+                           {payment.manual_country_code ? (
+                             <div className="flex items-center gap-1">
+                               {getEuClassificationBadge(displayClassification)}
+                               <span className="text-xs text-info" title="Manual override">
+                                ⚙️
+                               </span>
+                             </div>
+                           ) : payment.has_transaction ? (
+                             payment.customer_influenced_eu_classification !== payment.eu_classification ? (
+                               <div className="flex items-center gap-1">
+                                 {getEuClassificationBadge(displayClassification)}
+                                 <span className="text-xs text-info" title="Customer-influenced (different from original)">
+                                   *
+                                 </span>
+                               </div>
+                             ) : (
+                               getEuClassificationBadge(displayClassification)
+                             )
+                           ) : (
+                             getEuClassificationBadge(displayClassification)
+                           )}
+                         </td>
+                         <td>
+                           {payment.has_transaction ? (
+                             payment.enhanced_location_confidence_score > payment.location_confidence_score ? (
+                               <span className="badge badge-info" title="Enhanced using other customer transactions">
+                                 {payment.enhanced_location_confidence_score}/3
+                                 <span className="text-xs ml-1">↑</span>
+                               </span>
+                             ) : (
+                               <span className="badge badge-outline">
+                                 {payment.enhanced_location_confidence_score}/3
+                               </span>
+                             )
+                           ) : (
+                             <span className="text-gray-400 text-sm">-</span>
+                           )}
+                         </td>
+                         <td>{formatCurrency(payment.amount, payment.currency)}</td>
+                         <td>{formatCurrency(payment.fees, payment.converted_currency)}</td>
+                         <td className="font-semibold">
+                           {formatCurrency(payment.net, payment.converted_currency)}
+                         </td>
+                         <td>
+                           {payment.converted_currency || payment.currency || 'N/A'}
+                         </td>
+                         <td>
+                           {payment.has_transaction && payment.transaction_id ? (
+                             <Link
+                               href={`/transactions/${payment.transaction_id}`}
+                               className="btn btn-sm btn-outline"
+                               title="View detailed transaction information"
+                             >
+                               View
+                             </Link>
+                           ) : (
+                             <span className="text-gray-400 text-sm">No transaction</span>
+                           )}
+                         </td>
+                       </tr>
+                     )
+                   })}
+                 </tbody>
               </table>
             </div>
           </div>
