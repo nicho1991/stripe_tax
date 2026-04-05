@@ -70,7 +70,7 @@ class PayoutPdfService
       classification_result = transaction.customer_influenced_eu_classification
       classification_result[:customer_influenced].to_sym
     else
-      payment.eu_classification.to_sym
+      payment.effective_eu_classification.to_sym
     end
   end
 
