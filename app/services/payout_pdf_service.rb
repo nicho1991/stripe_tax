@@ -65,13 +65,7 @@ class PayoutPdfService
   def payment_classification(payment)
     return :stripe_fees if payment.type == "Stripe Fee"
 
-    transaction = payment.stripe_transaction
-    if transaction
-      classification_result = transaction.customer_influenced_eu_classification
-      classification_result[:customer_influenced].to_sym
-    else
-      payment.effective_eu_classification.to_sym
-    end
+    payment.effective_eu_classification.to_sym
   end
 
   def add_header(pdf)
