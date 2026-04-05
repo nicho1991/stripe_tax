@@ -7,7 +7,7 @@ interface Customer {
   transaction_count: number
   total_amount: number
   primary_currency: string
-  eu_classification_summary: 'undetermined' | 'eu' | 'non_eu'
+  eu_classification_summary: 'undetermined' | 'eu' | 'non_eu' | 'stripe_fees'
 }
 
 interface Pagination {
@@ -36,6 +36,7 @@ export default function Index({ customers, pagination }: Props) {
       eu: <span className="badge badge-success">EU</span>,
       non_eu: <span className="badge badge-error">Non-EU</span>,
       undetermined: <span className="badge badge-warning">Undetermined</span>,
+      stripe_fees: <span className="badge badge-info">Stripe Fees</span>,
     }
     return badges[classification as keyof typeof badges] || badges.undetermined
   }

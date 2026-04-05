@@ -49,6 +49,8 @@ class PayoutPdfService
       "Non-EU"
     when :undetermined
       "Undetermined"
+    when :stripe_fees
+      "Stripe Fees"
     else
       "Unknown"
     end
@@ -61,6 +63,8 @@ class PayoutPdfService
   end
 
   def payment_classification(payment)
+    return :stripe_fees if payment.type == "Stripe Fee"
+
     transaction = payment.stripe_transaction
     if transaction
       classification_result = transaction.customer_influenced_eu_classification

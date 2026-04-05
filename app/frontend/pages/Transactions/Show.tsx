@@ -10,7 +10,7 @@ interface Transaction {
   card_issue_country: string | null
   shipping_address_country: string | null
   location_confidence_score: number
-  eu_classification: 'undetermined' | 'eu' | 'non_eu'
+  eu_classification: 'undetermined' | 'eu' | 'non_eu' | 'stripe_fees'
   has_payment: boolean
   payment_id: number | null
   customer_id: string | null
@@ -35,7 +35,7 @@ interface Payment {
   customer_email: string | null
   customer_name: string | null
   customer_link: string | null
-  eu_classification: 'undetermined' | 'eu' | 'non_eu'
+  eu_classification: 'undetermined' | 'eu' | 'non_eu' | 'stripe_fees'
   payout_id: number
 }
 
@@ -68,6 +68,7 @@ export default function Show({ transaction, payment }: Props) {
       eu: <span className="badge badge-success">EU</span>,
       non_eu: <span className="badge badge-error">Non-EU</span>,
       undetermined: <span className="badge badge-warning">Undetermined</span>,
+      stripe_fees: <span className="badge badge-info">Stripe Fees</span>,
     }
     return badges[classification as keyof typeof badges] || badges.undetermined
   }
