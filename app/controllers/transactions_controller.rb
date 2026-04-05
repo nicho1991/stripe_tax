@@ -16,7 +16,14 @@ class TransactionsController < ApplicationController
         when '3' then :stripe_fees
         else params[:eu_classification]
         end
-        customer_influenced.to_s == filter_value.to_s
+        
+        # For stripe_fees filter, check the original classification since
+        # customer_influenced will never be :stripe_fees
+        if filter_value == :stripe_fees
+          transaction.eu_classification.to_sym == :stripe_fees
+        else
+          customer_influenced.to_s == filter_value.to_s
+        end
       end
       transactions = Transaction.where(id: filtered_transactions.map(&:id)).order(created_at_stripe: :desc)
     end
