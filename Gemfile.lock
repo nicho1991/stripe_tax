@@ -100,6 +100,7 @@ GEM
     countries (8.0.4)
       unaccent (~> 0.3)
     crass (1.0.6)
+    csv (3.3.5)
     date (3.5.0)
     debug (1.11.0)
       irb (~> 1.10)
@@ -373,6 +374,7 @@ DEPENDENCIES
   brakeman
   capybara
   countries
+  csv (~> 3.3)
   debug
   inertia_rails (~> 3.11)
   jbuilder

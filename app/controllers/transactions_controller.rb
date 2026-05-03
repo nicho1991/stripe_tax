@@ -107,7 +107,11 @@ class TransactionsController < ApplicationController
     notice += ", skipped #{import_result[:skipped]} duplicate(s)" if import_result[:skipped] > 0
     
     if import_result[:warnings].any?
-      flash[:warnings] = import_result[:warnings]
+      max_warnings = 5
+      warnings = import_result[:warnings].first(max_warnings)
+      remaining = import_result[:warnings].size - max_warnings
+      warnings << "...and #{remaining} more" if remaining > 0
+      flash[:warnings] = warnings
     end
 
     redirect_to transactions_path, notice: notice

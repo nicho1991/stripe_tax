@@ -1,3 +1,5 @@
+require 'csv'
+
 class PayoutCsvParser
   REQUIRED_COLUMNS = %w[Type ID Created Amount Currency Converted\ Amount Fees Net Converted\ Currency].freeze
 
@@ -12,7 +14,6 @@ class PayoutCsvParser
     return { success: false, errors: ["CSV content is empty"] } if csv_content.blank?
 
     begin
-      require 'csv'
       rows = CSV.parse(csv_content, headers: true)
       
       validate_headers(rows.headers)

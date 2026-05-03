@@ -59,3 +59,5 @@ gem "vite_rails", "~> 3.0"
 gem "countries"
 gem "prawn"
 gem "prawn-table"
+
+gem "csv", "~> 3.3"

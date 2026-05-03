@@ -32,10 +32,14 @@ class Payment < ApplicationRecord
   end
 
   def effective_eu_classification
-    return eu_classification unless manual_country_code.present?
+    if manual_country_code.present?
+      classification = EuClassificationService.classify_country(manual_country_code)
+      return classification if classification
+    end
 
-    classification = EuClassificationService.classify_country(manual_country_code)
-    classification ? classification : eu_classification
+    return stripe_transaction.eu_classification if stripe_transaction.present?
+
+    eu_classification
   end
 
   private
