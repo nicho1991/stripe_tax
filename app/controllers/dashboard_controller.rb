@@ -2,17 +2,17 @@ class DashboardController < ApplicationController
   def index
     recent_payouts = Current.user.payouts.order(created_at: :desc).limit(5)
     all_payouts = Current.user.payouts
-    
+
     # Calculate totals across all payouts
     total_amount = all_payouts.sum(&:total_amount).to_f
     total_fees = all_payouts.sum(&:total_fees).to_f
     total_net = all_payouts.sum(&:total_net).to_f
     total_payments = Payment.joins(:payout).where(payouts: { user_id: Current.user.id }).count
-    
+
     # Get primary currency (most common currency across payouts)
-    primary_currency = all_payouts.map(&:primary_currency).compact.group_by(&:itself).max_by { |_, v| v.length }&.first || 'USD'
-    
-    render inertia: 'Dashboard/Index', props: {
+    primary_currency = all_payouts.map(&:primary_currency).compact.group_by(&:itself).max_by { |_, v| v.length }&.first || "USD"
+
+    render inertia: "Dashboard/Index", props: {
       recent_payouts: recent_payouts.map { |p| payout_props(p) },
       total_payouts: all_payouts.count,
       totals: {
@@ -42,4 +42,3 @@ class DashboardController < ApplicationController
     }
   end
 end
-

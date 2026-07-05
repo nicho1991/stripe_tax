@@ -9,27 +9,27 @@ class CustomersController < ApplicationController
                                      MAX(payments.customer_email) as customer_email,
                                      COUNT(DISTINCT payments.stripe_id) as transaction_count,
                                      COALESCE(SUM(payments.converted_amount), 0) as total_amount')
-                            .group('payments.customer_id')
-                            .order('customer_name ASC NULLS LAST, customer_email ASC NULLS LAST')
+                            .group("payments.customer_id")
+                            .order("customer_name ASC NULLS LAST, customer_email ASC NULLS LAST")
 
     # Calculate EU classification summary for each customer
     customers = customers_data.map do |customer_data|
       customer_id = customer_data.customer_id
       transactions = Payment.transactions_for_customer(customer_id, Current.user)
-      
+
       # Get customer-influenced EU classifications from transactions
       classifications = transactions.map do |transaction|
         classification = transaction.customer_influenced_eu_classification
         classification[:customer_influenced].to_s
       end.compact
-      
+
       # Determine most common classification
       eu_classification_summary = if classifications.empty?
-        'undetermined'
+        "undetermined"
       else
         classification_counts = classifications.group_by(&:itself).transform_values(&:count)
         most_common = classification_counts.max_by { |_, count| count }&.first
-        most_common || 'undetermined'
+        most_common || "undetermined"
       end
 
       # Get primary currency for this customer's payments
@@ -40,7 +40,7 @@ class CustomersController < ApplicationController
                                           .first&.converted_currency ||
                          customer_payments.where.not(currency: nil)
                                           .first&.currency ||
-                         'USD'
+                         "USD"
 
       {
         customer_id: customer_id,
@@ -60,7 +60,7 @@ class CustomersController < ApplicationController
     total_pages = (total_count.to_f / per_page).ceil
     paginated_customers = customers[(page - 1) * per_page, per_page] || []
 
-    render inertia: 'Customers/Index', props: {
+    render inertia: "Customers/Index", props: {
       customers: paginated_customers,
       pagination: {
         current_page: page,
@@ -73,7 +73,7 @@ class CustomersController < ApplicationController
 
   def show
     customer_id = params[:id]
-    
+
     # Verify customer belongs to current user
     customer_payment = Payment.joins(:payout)
                              .where(payouts: { user_id: Current.user.id })
@@ -81,7 +81,7 @@ class CustomersController < ApplicationController
                              .first
 
     unless customer_payment
-      redirect_to customers_path, alert: 'Customer not found'
+      redirect_to customers_path, alert: "Customer not found"
       return
     end
 
@@ -100,7 +100,7 @@ class CustomersController < ApplicationController
     transaction_props = transactions.map do |transaction|
       enhancement = transaction.enhanced_location_confidence
       classification = transaction.customer_influenced_eu_classification
-      
+
       {
         id: transaction.id,
         transaction_id: transaction.transaction_id,
@@ -126,19 +126,19 @@ class CustomersController < ApplicationController
     payment_ids = transactions.map { |t| t.payment&.id }.compact
     customer_payments = Payment.where(id: payment_ids)
     total_amount = customer_payments.sum(:converted_amount).to_f
-    
+
     # Get primary currency for this customer's payments
     primary_currency = customer_payments.where.not(converted_currency: nil)
                                       .first&.converted_currency ||
                        customer_payments.where.not(currency: nil)
                                       .first&.currency ||
-                       'USD'
-    
+                       "USD"
+
     eu_count = transactions.where(eu_classification: :eu).count
     non_eu_count = transactions.where(eu_classification: :non_eu).count
     undetermined_count = transactions.where(eu_classification: :undetermined).count
 
-    render inertia: 'Customers/Show', props: {
+    render inertia: "Customers/Show", props: {
       customer: customer_info,
       transactions: transaction_props,
       summary: {
@@ -152,4 +152,3 @@ class CustomersController < ApplicationController
     }
   end
 end
-

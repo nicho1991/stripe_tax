@@ -7,7 +7,7 @@ class Transaction < ApplicationRecord
   validates :transaction_id, presence: true, uniqueness: true
   validates :created_at_stripe, presence: true
 
-  scope :successful, -> { where(status: 'Paid') }
+  scope :successful, -> { where(status: "Paid") }
 
   def calculate_location_confidence_score
     score = 0
@@ -22,8 +22,8 @@ class Transaction < ApplicationRecord
     return Transaction.none unless payment&.customer_id.present?
 
     customer_id = payment.customer_id
-    Transaction.joins('INNER JOIN payments ON transactions.transaction_id = payments.stripe_id')
-               .joins('INNER JOIN payouts ON payments.payout_id = payouts.id')
+    Transaction.joins("INNER JOIN payments ON transactions.transaction_id = payments.stripe_id")
+               .joins("INNER JOIN payouts ON payments.payout_id = payouts.id")
                .where(payments: { customer_id: customer_id })
                .where(payouts: { user_id: user_id })
                .where.not(id: id)
@@ -42,7 +42,7 @@ class Transaction < ApplicationRecord
     inferred_fields = []
 
     # Infer missing fields from other customer transactions
-    [:card_address_country, :card_issue_country, :shipping_address_country].each do |field|
+    [ :card_address_country, :card_issue_country, :shipping_address_country ].each do |field|
       next if send(field).present? # Skip if field already has a value
 
       # Find most common non-nil value across other customer transactions
@@ -61,7 +61,7 @@ class Transaction < ApplicationRecord
     enhanced_score = location_confidence_score + inferred_fields.length
 
     {
-      enhanced_score: [enhanced_score, 3].min, # Cap at 3
+      enhanced_score: [ enhanced_score, 3 ].min, # Cap at 3
       inferred_fields: inferred_fields,
       inferred_data: inferred_data
     }
@@ -91,4 +91,3 @@ class Transaction < ApplicationRecord
     }
   end
 end
-

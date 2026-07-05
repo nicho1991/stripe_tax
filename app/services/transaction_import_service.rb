@@ -103,4 +103,3 @@ class TransactionImportService
     payment.update(eu_classification: transaction.eu_classification)
   end
 end
-

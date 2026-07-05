@@ -1,4 +1,4 @@
-require 'csv'
+require "csv"
 
 class PayoutCsvParser
   REQUIRED_COLUMNS = %w[Type ID Created Amount Currency Converted\ Amount Fees Net Converted\ Currency].freeze
@@ -11,11 +11,11 @@ class PayoutCsvParser
   end
 
   def parse
-    return { success: false, errors: ["CSV content is empty"] } if csv_content.blank?
+    return { success: false, errors: [ "CSV content is empty" ] } if csv_content.blank?
 
     begin
       rows = CSV.parse(csv_content, headers: true)
-      
+
       validate_headers(rows.headers)
       return { success: false, errors: errors } if errors.any?
 
@@ -24,7 +24,7 @@ class PayoutCsvParser
 
       rows.each_with_index do |row, index|
         row_number = index + 2 # +2 because CSV is 1-indexed and we skip header
-        
+
         payment_data = parse_payment_row(row, row_number)
         if payment_data[:error]
           errors << "Row #{row_number}: #{payment_data[:error]}"
@@ -38,7 +38,7 @@ class PayoutCsvParser
 
       period_start = dates.min&.to_date
       period_end = dates.max&.to_date
-      
+
       # Generate default period name from date range
       period_name = generate_period_name(period_start, period_end)
 
@@ -50,9 +50,9 @@ class PayoutCsvParser
         period_name: period_name
       }
     rescue CSV::MalformedCSVError => e
-      { success: false, errors: ["Invalid CSV format: #{e.message}"] }
+      { success: false, errors: [ "Invalid CSV format: #{e.message}" ] }
     rescue StandardError => e
-      { success: false, errors: ["Error parsing CSV: #{e.message}"] }
+      { success: false, errors: [ "Error parsing CSV: #{e.message}" ] }
     end
   end
 
@@ -67,20 +67,20 @@ class PayoutCsvParser
 
   def parse_payment_row(row, row_number)
     begin
-      type = row['Type']&.strip
-      stripe_id = row['ID']&.strip
-      created_str = row['Created']&.strip
-      description = row['Description']&.strip
-      amount_str = row['Amount']&.strip
-      currency = row['Currency']&.strip
-      converted_amount_str = row['Converted Amount']&.strip
-      fees_str = row['Fees']&.strip
-      net_str = row['Net']&.strip
-      converted_currency = row['Converted Currency']&.strip
-      details = row['Details']&.strip
-      customer_id = row['Customer ID']&.strip
-      customer_email = row['Customer Email']&.strip
-      customer_name = row['Customer Name']&.strip
+      type = row["Type"]&.strip
+      stripe_id = row["ID"]&.strip
+      created_str = row["Created"]&.strip
+      description = row["Description"]&.strip
+      amount_str = row["Amount"]&.strip
+      currency = row["Currency"]&.strip
+      converted_amount_str = row["Converted Amount"]&.strip
+      fees_str = row["Fees"]&.strip
+      net_str = row["Net"]&.strip
+      converted_currency = row["Converted Currency"]&.strip
+      details = row["Details"]&.strip
+      customer_id = row["Customer ID"]&.strip
+      customer_email = row["Customer Email"]&.strip
+      customer_name = row["Customer Name"]&.strip
 
       # Validate required fields
       if type.blank?
@@ -154,11 +154,11 @@ class PayoutCsvParser
 
     # Handle European format: "9,99" -> 9.99
     # Also handle negative values: "-0,32" -> -0.32
-    normalized = value.to_s.strip.gsub(',', '.')
-    
+    normalized = value.to_s.strip.gsub(",", ".")
+
     # Remove any thousand separators (spaces or dots used as thousands)
-    normalized = normalized.gsub(/\s+/, '')
-    
+    normalized = normalized.gsub(/\s+/, "")
+
     BigDecimal(normalized)
   rescue ArgumentError, TypeError
     nil
@@ -193,4 +193,3 @@ class PayoutCsvParser
     end
   end
 end
-
