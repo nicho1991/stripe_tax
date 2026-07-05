@@ -60,4 +60,10 @@ gem "countries"
 gem "prawn"
 gem "prawn-table"
 
+# Rack / Rack-session pins to clear bundler-audit CVEs
+# (rack Content-Length mismatch GHSA-q2ww-5357-x388, rack host allowlist bypass
+# GHSA-g2pf-xv49-m2h5, rack-session decrypt fallback GHSA-33qg-7wpp-89cq).
+gem "rack", "~> 3.2.6"
+gem "rack-session", "~> 2.1.2"
+
 gem "csv", "~> 3.3"

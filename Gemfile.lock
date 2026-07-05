@@ -220,10 +220,10 @@ GEM
     puma (7.1.0)
       nio4r (~> 2.0)
     racc (1.8.1)
-    rack (3.2.4)
+    rack (3.2.6)
     rack-proxy (0.7.7)
       rack
-    rack-session (2.1.1)
+    rack-session (2.1.2)
       base64 (>= 0.1.0)
       rack (>= 3.0.0)
     rack-test (2.2.0)
@@ -384,6 +384,8 @@ DEPENDENCIES
   prawn-table
   propshaft
   puma (>= 5.0)
+  rack (~> 3.2.6)
+  rack-session (~> 2.1.2)
   rails (~> 8.0.4)
   rubocop-rails-omakase
   selenium-webdriver
