@@ -1,7 +1,7 @@
 class TransactionsController < ApplicationController
   def index
     transactions = Current.user.transactions.order(created_at_stripe: :desc)
-    
+
     # Filter by customer-influenced EU classification if provided
     # We need to calculate this for all transactions first, then filter
     if params[:eu_classification].present?
@@ -10,13 +10,13 @@ class TransactionsController < ApplicationController
         customer_influenced = classification[:customer_influenced]
         # Convert enum value to string for comparison
         filter_value = case params[:eu_classification]
-        when '0' then :undetermined
-        when '1' then :eu
-        when '2' then :non_eu
-        when '3' then :stripe_fees
+        when "0" then :undetermined
+        when "1" then :eu
+        when "2" then :non_eu
+        when "3" then :stripe_fees
         else params[:eu_classification]
         end
-        
+
         # For stripe_fees filter, check the original classification since
         # customer_influenced will never be :stripe_fees
         if filter_value == :stripe_fees
@@ -35,7 +35,7 @@ class TransactionsController < ApplicationController
     total_pages = (total_count.to_f / per_page).ceil
     paginated_transactions = transactions.limit(per_page).offset((page - 1) * per_page)
 
-    render inertia: 'Transactions/Index', props: {
+    render inertia: "Transactions/Index", props: {
       transactions: paginated_transactions.map { |t| transaction_props(t) },
       filters: {
         eu_classification: params[:eu_classification]
@@ -50,35 +50,35 @@ class TransactionsController < ApplicationController
   end
 
   def show
-    transaction = Current.user.transactions.find_by(transaction_id: params[:id]) || 
+    transaction = Current.user.transactions.find_by(transaction_id: params[:id]) ||
                   Current.user.transactions.find_by(id: params[:id])
-    
+
     unless transaction
-      redirect_to transactions_path, alert: 'Transaction not found'
+      redirect_to transactions_path, alert: "Transaction not found"
       return
     end
 
-    render inertia: 'Transactions/Show', props: {
+    render inertia: "Transactions/Show", props: {
       transaction: transaction_props(transaction),
       payment: transaction.payment ? payment_props(transaction.payment) : nil
     }
   end
 
   def new
-    render inertia: 'Transactions/New'
+    render inertia: "Transactions/New"
   end
 
   def create
     csv_file = params[:csv_file]
 
     if csv_file.blank?
-      return render inertia: 'Transactions/New', props: {
-        errors: { csv_file: ['CSV file is required'] }
+      return render inertia: "Transactions/New", props: {
+        errors: { csv_file: [ "CSV file is required" ] }
       }
     end
 
     # Read CSV content with UTF-8 encoding
-    csv_content = csv_file.read.force_encoding('UTF-8')
+    csv_content = csv_file.read.force_encoding("UTF-8")
     csv_file.rewind
 
     # Parse CSV
@@ -86,7 +86,7 @@ class TransactionsController < ApplicationController
     result = parser.parse
 
     unless result[:success]
-      return render inertia: 'Transactions/New', props: {
+      return render inertia: "Transactions/New", props: {
         errors: { base: result[:errors] }
       }
     end
@@ -96,7 +96,7 @@ class TransactionsController < ApplicationController
     import_result = import_service.import(result[:transactions])
 
     if import_result[:errors].any?
-      return render inertia: 'Transactions/New', props: {
+      return render inertia: "Transactions/New", props: {
         errors: { base: import_result[:errors] },
         warnings: import_result[:warnings]
       }
@@ -105,7 +105,7 @@ class TransactionsController < ApplicationController
     # Build success message
     notice = "Imported #{import_result[:imported]} transaction(s)"
     notice += ", skipped #{import_result[:skipped]} duplicate(s)" if import_result[:skipped] > 0
-    
+
     if import_result[:warnings].any?
       max_warnings = 5
       warnings = import_result[:warnings].first(max_warnings)
@@ -116,8 +116,8 @@ class TransactionsController < ApplicationController
 
     redirect_to transactions_path, notice: notice
   rescue StandardError => e
-    render inertia: 'Transactions/New', props: {
-      errors: { base: ["An error occurred: #{e.message}"] }
+    render inertia: "Transactions/New", props: {
+      errors: { base: [ "An error occurred: #{e.message}" ] }
     }
   end
 
@@ -179,4 +179,3 @@ class TransactionsController < ApplicationController
     }
   end
 end
-

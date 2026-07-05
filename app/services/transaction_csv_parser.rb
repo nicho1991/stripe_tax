@@ -7,13 +7,13 @@ class TransactionCsvParser
   end
 
   def parse
-    return { success: false, errors: ["CSV content is empty"] } if csv_content.blank?
+    return { success: false, errors: [ "CSV content is empty" ] } if csv_content.blank?
 
     begin
-      require 'csv'
+      require "csv"
       rows = CSV.parse(csv_content, headers: true)
 
-      return { success: false, errors: ["CSV has no headers"] } if rows.headers.nil?
+      return { success: false, errors: [ "CSV has no headers" ] } if rows.headers.nil?
 
       transactions_data = []
 
@@ -37,9 +37,9 @@ class TransactionCsvParser
         errors: errors
       }
     rescue CSV::MalformedCSVError => e
-      { success: false, errors: ["Invalid CSV format: #{e.message}"] }
+      { success: false, errors: [ "Invalid CSV format: #{e.message}" ] }
     rescue StandardError => e
-      { success: false, errors: ["Error parsing CSV: #{e.message}"] }
+      { success: false, errors: [ "Error parsing CSV: #{e.message}" ] }
     end
   end
 
@@ -47,13 +47,13 @@ class TransactionCsvParser
 
   def parse_transaction_row(row, row_number)
     begin
-      transaction_id = row['id']&.strip
-      created_str = row['Created date (UTC)']&.strip
-      status = row['Status']&.strip
-      decline_reason = row['Decline Reason']&.strip
-      card_address_country = row['Card Address Country']&.strip
-      card_issue_country = row['Card Issue Country']&.strip
-      shipping_address_country = row['Shipping Address Country']&.strip
+      transaction_id = row["id"]&.strip
+      created_str = row["Created date (UTC)"]&.strip
+      status = row["Status"]&.strip
+      decline_reason = row["Decline Reason"]&.strip
+      card_address_country = row["Card Address Country"]&.strip
+      card_issue_country = row["Card Issue Country"]&.strip
+      shipping_address_country = row["Shipping Address Country"]&.strip
 
       # Skip if no transaction ID
       if transaction_id.blank?
@@ -61,7 +61,7 @@ class TransactionCsvParser
       end
 
       # Skip declined, canceled, or failed transactions
-      if status.present? && ['Failed', 'canceled'].include?(status)
+      if status.present? && [ "Failed", "canceled" ].include?(status)
         return { skip: true }
       end
 
@@ -113,4 +113,3 @@ class TransactionCsvParser
     end
   end
 end
-

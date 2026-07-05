@@ -8,7 +8,7 @@ class CreatePayouts < ActiveRecord::Migration[8.0]
 
       t.timestamps
     end
-    
-    add_index :payouts, [:user_id, :period_start, :period_end]
+
+    add_index :payouts, [ :user_id, :period_start, :period_end ]
   end
 end

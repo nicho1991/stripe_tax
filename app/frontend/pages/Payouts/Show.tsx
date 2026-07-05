@@ -306,6 +306,10 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
               </button>
             </div>
           </div>
+
+          <div role="alert" className="alert alert-info mt-4">
+            <span>afstem med 5840 stripe konto</span>
+          </div>
         </div>
 
         {/* Rename Modal */}
