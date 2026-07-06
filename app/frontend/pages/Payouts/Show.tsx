@@ -42,6 +42,7 @@ interface Payout {
   name: string
   period_start: string
   period_end: string
+  arrival_date: string | null
   total_amount: number
   total_fees: number
   total_net: number
@@ -249,10 +250,31 @@ export default function Show({ payout, payments, errors: propErrors }: Props) {
           </Link>
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">{payout.name}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-3xl font-bold">{payout.name}</h1>
+                <button
+                  type="button"
+                  onClick={() => setShowRenameModal(true)}
+                  className="btn btn-ghost btn-xs"
+                  title="Rename payout"
+                  aria-label="Rename payout"
+                >
+                  ✏️
+                </button>
+              </div>
               <p className="text-gray-600 mt-2">
-                Period: {new Date(payout.period_start).toLocaleDateString()} -{' '}
+                Activity: {new Date(payout.period_start).toLocaleDateString()} -{' '}
                 {new Date(payout.period_end).toLocaleDateString()}
+                {payout.arrival_date && (
+                  <span className="ml-2 text-sm">
+                    · Paid out {new Date(payout.arrival_date).toLocaleDateString()}
+                  </span>
+                )}
+                {!payout.arrival_date && (
+                  <span className="ml-2 text-sm text-gray-400">
+                    · (no payout date recorded)
+                  </span>
+                )}
               </p>
             </div>
             <div className="flex gap-2 flex-wrap">

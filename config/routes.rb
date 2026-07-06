@@ -3,6 +3,11 @@ Rails.application.routes.draw do
   get "dashboard", to: "dashboard#index"
 
   resources :payouts do
+    collection do
+      # Phase 2 — fetch a payout's data from Stripe directly instead
+      # of uploading a CSV. Delegates to `payouts#fetch`.
+      post :fetch
+    end
     member do
       get :pdf_eu
       get :pdf_non_eu

@@ -34,7 +34,7 @@ class PayoutsController < ApplicationController
 
   def create
     csv_file = params[:csv_file]
-    period_name = params[:period_name]&.strip
+    arrival_date = parse_arrival_date_param(params[:arrival_date])
 
     if csv_file.blank?
       return render inertia: "Payouts/New", props: {
@@ -42,46 +42,56 @@ class PayoutsController < ApplicationController
       }
     end
 
-    # Read CSV content with UTF-8 encoding
-    csv_content = csv_file.read.force_encoding("UTF-8")
-    csv_file.rewind
-
-    # Parse CSV
-    parser = ::PayoutCsvParser.new(csv_content)
-    result = parser.parse
-
-    unless result[:success]
+    if arrival_date.blank?
       return render inertia: "Payouts/New", props: {
-        errors: { base: result[:errors] }
+        errors: { arrival_date: [ "Payout Date is required" ] }
       }
     end
 
-    # Use provided period name or default from parser
-    final_period_name = period_name.presence || result[:period_name]
+    # Phase 3: the form no longer asks for a free-form period name.
+    # PayoutImporter derives the name from `arrival_date` via
+    # `PayoutName.from`. The :csv branch is bit-for-bit equivalent to
+    # what the controller did before Phase 1.
+    result = PayoutImporter.call(
+      source: :csv,
+      user: Current.user,
+      csv_file: csv_file,
+      arrival_date: arrival_date
+    )
 
-    # Create payout with payments
-    payout = nil
-    ActiveRecord::Base.transaction do
-      payout = Current.user.payouts.create!(
-        name: final_period_name,
-        period_start: result[:period_start],
-        period_end: result[:period_end]
-      )
+    if result.success?
+      redirect_to payout_path(result.payout), notice: "Payout created successfully"
+    else
+      render inertia: "Payouts/New", props: { errors: { base: result.errors } }
+    end
+  end
 
-      result[:payments].each do |payment_data|
-        payout.payments.create!(payment_data)
-      end
+  # Phase 2 — fetch a Stripe payout and import it directly. Equivalent
+  # to the CSV path, but reads from Stripe API instead of accepting
+  # an upload. Reachable only when `StripeClient.configured?` is true;
+  # the importer raises a friendly error otherwise.
+  def fetch
+    start_date = parse_date_param(params[:start_date])
+    end_date = parse_date_param(params[:end_date])
+
+    if start_date.blank? || end_date.blank?
+      return render inertia: "Payouts/New", props: {
+        errors: { base: [ "Start date and end date are required" ] }
+      }
     end
 
-    redirect_to payout_path(payout), notice: "Payout created successfully"
-  rescue ActiveRecord::RecordInvalid => e
-    render inertia: "Payouts/New", props: {
-      errors: { base: [ e.record.errors.full_messages.join(", ") ] }
-    }
-  rescue StandardError => e
-    render inertia: "Payouts/New", props: {
-      errors: { base: [ "An error occurred: #{e.message}" ] }
-    }
+    result = PayoutImporter.call(
+      source: :stripe_api,
+      user: Current.user,
+      start_date: start_date,
+      end_date: end_date
+    )
+
+    if result.success?
+      redirect_to payout_path(result.payout), notice: "Payout fetched from Stripe"
+    else
+      render inertia: "Payouts/New", props: { errors: { base: result.errors } }
+    end
   end
 
   def update
@@ -143,6 +153,7 @@ class PayoutsController < ApplicationController
       name: payout.name,
       period_start: payout.period_start,
       period_end: payout.period_end,
+      arrival_date: payout.arrival_date,
       total_amount: payout.total_amount.to_f,
       total_fees: payout.total_fees.to_f,
       total_net: payout.total_net.to_f,
@@ -221,4 +232,17 @@ class PayoutsController < ApplicationController
               type: "application/pdf",
               disposition: "attachment"
   end
+
+  # Parse a YYYY-MM-DD date param safely; returns nil for blank /
+  # malformed input rather than raising. Form fields come through
+  # as ActionDispatch::Http::UploadedFile for file inputs and as
+  # strings for date inputs — we coerce here.
+  def parse_date_param(value)
+    return nil if value.blank?
+
+    Date.parse(value.to_s)
+  rescue ArgumentError, TypeError
+    nil
+  end
+  alias_method :parse_arrival_date_param, :parse_date_param
 end

@@ -25,24 +25,26 @@ class PayoutImporter
     alias_method :success?, :success
   end
 
-  def self.call(source:, user:, csv_content: nil, csv_file: nil, start_date: nil, end_date: nil)
+  def self.call(source:, user:, csv_content: nil, csv_file: nil, start_date: nil, end_date: nil, arrival_date: nil)
     new(
       source: source,
       user: user,
       csv_content: csv_content,
       csv_file: csv_file,
       start_date: start_date,
-      end_date: end_date
+      end_date: end_date,
+      arrival_date: arrival_date
     ).call
   end
 
-  def initialize(source:, user:, csv_content:, csv_file:, start_date:, end_date:)
+  def initialize(source:, user:, csv_content:, csv_file:, start_date:, end_date:, arrival_date:)
     @source = source
     @user = user
     @csv_content = csv_content
     @csv_file = csv_file
     @start_date = start_date
     @end_date = end_date
+    @arrival_date = arrival_date
   end
 
   def call
@@ -59,7 +61,12 @@ class PayoutImporter
   private
 
   # CSV path — replicates payouts_controller#create's
-  # parser + create flow bit-for-bit. No behaviour change.
+  # parser + create flow bit-for-bit. The `arrival_date` kwarg is the
+  # user-provided "Payout Date" date input from Phase 3's form; it
+  # controls the displayed name (`PayoutName.from(arrival_date)`).
+  # When omitted (e.g. a script-invoked import that doesn't care
+  # about the displayed name), name falls back to the parser-derived
+  # `period_name` to keep pre-Phase-3 callers working unchanged.
   def import_from_csv
     csv_text = read_csv_content
     return Result.new(success: false, errors: [ "CSV content is empty" ]) if csv_text.blank?
@@ -71,11 +78,13 @@ class PayoutImporter
       return Result.new(success: false, errors: parsed[:errors])
     end
 
+    payout_name = @arrival_date ? PayoutName.from(@arrival_date) : parsed[:period_name]
+
     payout = create_payout(
-      name: parsed[:period_name],
+      name: payout_name,
       period_start: parsed[:period_start],
       period_end: parsed[:period_end],
-      arrival_date: nil
+      arrival_date: @arrival_date
     )
 
     return payout unless payout.is_a?(Payout)

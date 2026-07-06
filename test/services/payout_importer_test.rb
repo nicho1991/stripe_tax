@@ -50,11 +50,39 @@ class PayoutImporterTest < ActiveSupport::TestCase
     result = PayoutImporter.call(
       source: :csv,
       user: user,
-      csv_file: file
+      csv_file: file,
+      arrival_date: Date.new(2026, 6, 1)
     )
 
     assert result.success?, "expected success, got: #{result.errors.inspect}"
     assert result.payout.persisted?
+    assert_equal Date.new(2026, 6, 1), result.payout.arrival_date
+    assert_equal "JUN 1 - 2026", result.payout.name
+  end
+
+  test ":csv branch derives name from arrival_date when provided" do
+    result = PayoutImporter.call(
+      source: :csv,
+      user: user,
+      csv_content: SAMPLE_CSV,
+      arrival_date: Date.new(2026, 6, 1)
+    )
+
+    assert result.success?
+    assert_equal "JUN 1 - 2026", result.payout.name
+    assert_equal Date.new(2026, 6, 1), result.payout.arrival_date
+  end
+
+  test ":csv branch falls back to parser-derived name when arrival_date omitted" do
+    result = PayoutImporter.call(
+      source: :csv,
+      user: user,
+      csv_content: SAMPLE_CSV
+    )
+
+    assert result.success?
+    assert_equal "May 2026", result.payout.name
+    assert_nil result.payout.arrival_date
   end
 
   test ":csv branch matches controller's bit-for-bit output" do
