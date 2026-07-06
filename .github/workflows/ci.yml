@@ -85,6 +85,16 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
+      # Vite Ruby auto-builds frontend assets when a view is first
+      # rendered, but the auto-build can race the test render and
+      # leave the test manifest empty (producing `Vite Ruby can't
+      # find entrypoints/application.css in the manifests` for every
+      # test that renders a layout). Pre-build explicitly with
+      # RAILS_ENV=test so the test-mode manifest exists with content
+      # before any test runs.
+      - name: Pre-build Vite test assets
+        run: RAILS_ENV=test bin/vite build
+
       - name: Run tests
         env:
           RAILS_ENV: test
