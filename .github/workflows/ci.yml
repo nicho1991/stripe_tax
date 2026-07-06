@@ -69,6 +69,22 @@ jobs:
           ruby-version: .ruby-version
           bundler-cache: true
 
+      # Vite Ruby gem auto-builds frontend assets when views are
+      # rendered (including via Inertia controller tests). node_modules
+      # must be installed before bin/rails test runs, otherwise the
+      # Vite build fails with `Cannot find package '@vitejs/plugin-react'`
+      # (etc.) and every test that renders a layout errors out with
+      # `ActionView::Template::Error: Vite Ruby can't find
+      # entrypoints/application.css in the manifests`.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install npm dependencies
+        run: npm ci
+
       - name: Run tests
         env:
           RAILS_ENV: test
