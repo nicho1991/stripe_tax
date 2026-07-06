@@ -56,6 +56,11 @@ class PayoutImporter
     end
   rescue CredentialsMissing => e
     Result.new(success: false, errors: [ e.message ])
+  rescue StripePayoutFetcher::FetchError => e
+    # The fetcher raises FetchError on any Stripe::StripeError
+    # (authentication, rate limit, network). Surface as a friendly
+    # message so the controller can render it instead of 500'ing.
+    Result.new(success: false, errors: [ e.message ])
   end
 
   private

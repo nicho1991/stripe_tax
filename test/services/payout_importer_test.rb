@@ -156,6 +156,40 @@ class PayoutImporterTest < ActiveSupport::TestCase
     end
   end
 
+  test ":stripe_api branch wraps StripePayoutFetcher::FetchError as a friendly Result" do
+    flaky_v1 = Object.new
+    flaky_v1.define_singleton_method(:payouts) do
+      o = Object.new
+      o.define_singleton_method(:list) do |**|
+        raise Stripe::AuthenticationError.new("bad key")
+      end
+      o
+    end
+    flaky_v1.define_singleton_method(:balance_transactions) do
+      o = Object.new
+      o.define_singleton_method(:list) { |**| [] }
+      o
+    end
+
+    client = Object.new
+    client.define_singleton_method(:v1) { flaky_v1 }
+
+    with_stubbed_stripe(configured: true, client: client) {
+      before_count = Payout.count
+      result = PayoutImporter.call(
+        source: :stripe_api,
+        user: user,
+        start_date: Date.new(2026, 7, 1),
+        end_date: Date.new(2026, 7, 31)
+      )
+
+      refute result.success?
+      assert_match(/Stripe API error/, result.errors.first)
+      assert_equal before_count, Payout.count,
+        "expected no Payout to be created when Stripe raises FetchError"
+    }
+  end
+
   test ":stripe_api branch succeeds when a payout is found and writes arrival_date" do
     with_stubbed_stripe(configured: true, client: stub_v1_client_with_one_payout) do
       result = PayoutImporter.call(

@@ -68,7 +68,7 @@ class StripePayoutBuilderTest < ActiveSupport::TestCase
     assert_equal(-10.00.to_d, row[:amount])
   end
 
-  test "row_for stripe fees get eu_classification 3" do
+  test "row_for stripe fees get eu_classification 3 with negative fees column" do
     source = FakeSource.new(id: "fee_001")
     bt = FakeBT.new(
       id: "txn_3",
@@ -86,6 +86,11 @@ class StripePayoutBuilderTest < ActiveSupport::TestCase
     row = StripePayoutBuilder.row_for(bt)
 
     assert_equal "Stripe Fee", row[:type]
+    # Stripe fee BTs route fees via bt.amount (the row IS the fee
+    # deduction), so fees is negative — matches the Stripe dashboard
+    # CSV where the "Stripe Fee" row's fees column is the negative
+    # amount of the fee itself.
+    assert_equal(-1.74.to_d, row[:fees])
     assert_equal 3, row[:eu_classification]
   end
 
