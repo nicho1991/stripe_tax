@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_04_05_071716) do
+ActiveRecord::Schema[8.0].define(version: 2026_07_05_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -33,6 +33,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_05_071716) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "eu_classification", default: 0, null: false
+    t.integer "manual_eu_classification"
     t.string "manual_country_code"
     t.index ["customer_id"], name: "index_payments_on_customer_id", where: "(customer_id IS NOT NULL)"
     t.index ["manual_country_code"], name: "index_payments_on_manual_country_code"
@@ -48,6 +49,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_05_071716) do
     t.date "period_end", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.date "arrival_date"
+    t.index ["user_id", "arrival_date"], name: "index_payouts_on_user_id_and_arrival_date"
     t.index ["user_id", "period_start", "period_end"], name: "index_payouts_on_user_id_and_period_start_and_period_end"
     t.index ["user_id"], name: "index_payouts_on_user_id"
   end

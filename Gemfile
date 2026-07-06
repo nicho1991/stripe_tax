@@ -67,3 +67,10 @@ gem "rack", "~> 3.2.6"
 gem "rack-session", "~> 2.1.2"
 
 gem "csv", "~> 3.3"
+
+# Stripe API client — used by Phase 1 direct import path
+# (PayoutImporter :stripe_api branch). Pinned to 19.3.x per
+# docs/stripe-direct-import-proposal.md §2.1. Modern SDK only —
+# callers must use `client.v1.balance_transactions.list(...)` etc.,
+# NOT legacy `Stripe::BalanceTransaction.list(...)`.
+gem "stripe", "~> 19.3"

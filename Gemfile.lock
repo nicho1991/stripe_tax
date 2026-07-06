@@ -319,6 +319,9 @@ GEM
       net-sftp (>= 2.1.2)
       net-ssh (>= 2.8.0)
       ostruct
+    stripe (19.3.0)
+      bigdecimal
+      logger
     thor (1.5.0)
     thruster (0.1.16)
     thruster (0.1.16-aarch64-linux)
@@ -393,6 +396,7 @@ DEPENDENCIES
   rails (~> 8.0.4, >= 8.0.4.1)
   rubocop-rails-omakase
   selenium-webdriver
+  stripe (~> 19.3)
   thruster
   tzinfo-data
   vite_rails (~> 3.0)
