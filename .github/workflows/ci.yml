@@ -99,6 +99,16 @@ jobs:
         env:
           RAILS_ENV: test
           DATABASE_URL: postgres://postgres:postgres@localhost:5432
+          # Active Record encryption (Rails 7+) — the User#stripe_secret_key
+          # column is encrypted at rest, so the test environment needs
+          # these keys in scope or every test that touches encryption
+          # raises `Missing Active Record encryption credential`. The
+          # 3-tuple lives in GH repo secrets (AR_ENC_*). Locally,
+          # `bin/rails test` picks them up from .encryption_keys
+          # (gitignored), populated via `bin/rails db:encryption:init`.
+          ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY: ${{ secrets.AR_ENC_PRIMARY_KEY }}
+          ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY: ${{ secrets.AR_ENC_DETERMINISTIC_KEY }}
+          ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT: ${{ secrets.AR_ENC_KEY_DERIVATION_SALT }}
           # REDIS_URL: redis://localhost:6379/0
         run: bin/rails db:test:prepare test test:system
 
