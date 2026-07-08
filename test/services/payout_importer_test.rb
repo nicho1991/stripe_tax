@@ -129,12 +129,13 @@ class PayoutImporterTest < ActiveSupport::TestCase
   end
 
   test ":stripe_api branch raises CredentialsMissing when no key configured" do
-    with_stubbed_stripe(configured: false, client: nil) do
+    with_stubbed_stripe(configured: false, client: nil, key: "") do
       result = PayoutImporter.call(
         source: :stripe_api,
         user: user,
         start_date: Date.new(2026, 7, 1),
-        end_date: Date.new(2026, 7, 31)
+        end_date: Date.new(2026, 7, 31),
+        stripe_key: ""
       )
 
       refute result.success?
@@ -148,7 +149,8 @@ class PayoutImporterTest < ActiveSupport::TestCase
         source: :stripe_api,
         user: user,
         start_date: Date.new(2026, 7, 1),
-        end_date: Date.new(2026, 7, 31)
+        end_date: Date.new(2026, 7, 31),
+        stripe_key: "sk_test_stub"
       )
 
       refute result.success?
@@ -180,7 +182,8 @@ class PayoutImporterTest < ActiveSupport::TestCase
         source: :stripe_api,
         user: user,
         start_date: Date.new(2026, 7, 1),
-        end_date: Date.new(2026, 7, 31)
+        end_date: Date.new(2026, 7, 31),
+        stripe_key: "sk_test_stub"
       )
 
       refute result.success?
@@ -196,7 +199,8 @@ class PayoutImporterTest < ActiveSupport::TestCase
         source: :stripe_api,
         user: user,
         start_date: Date.new(2026, 7, 1),
-        end_date: Date.new(2026, 7, 31)
+        end_date: Date.new(2026, 7, 31),
+        stripe_key: "sk_test_stub"
       )
 
       assert result.success?, "expected success, got: #{result.errors.inspect}"
@@ -205,6 +209,30 @@ class PayoutImporterTest < ActiveSupport::TestCase
       assert_equal "JUL 1 - 2026", result.payout.name
       assert result.payout.payments.any?
     end
+  end
+
+  test ":stripe_api branch verifies credentials via User#stripe_secret_key (per-user)" do
+    # After per-user credentials refactor, the importer takes the
+    # already-resolved key from the controller (which pulls from
+    # Current.user). The importer itself is key-agnostic — it just
+    # forwards to StripePayoutFetcher.
+    user.stripe_secret_key = "sk_test_per_user"
+    user.save!
+
+    fetched = nil
+    client = stub_v1_client_with_one_payout
+    StripeClient.define_singleton_method(:client) { |**| client }
+
+    result = PayoutImporter.call(
+      source: :stripe_api,
+      user: user,
+      start_date: Date.new(2026, 7, 1),
+      end_date: Date.new(2026, 7, 31),
+      stripe_key: user.stripe_secret_key
+    )
+
+    assert result.success?
+    assert_equal "JUL 1 - 2026", result.payout.name
   end
 
   test "unknown source returns failure" do
@@ -219,15 +247,18 @@ class PayoutImporterTest < ActiveSupport::TestCase
 
   private
 
-  def with_stubbed_stripe(configured:, client:)
-    original_client = StripeClient.method(:client)
-    original_configured = StripeClient.method(:configured?)
-    StripeClient.define_singleton_method(:client) { client } if client
-    StripeClient.define_singleton_method(:configured?) { configured }
+  # Replaces the StripeClient.client / .configured? call shape with
+  # the new per-key signatures. Tests that don't care about key
+  # resolution should pass any placeholder key — the stubbed
+  # configured? check ignores the key argument.
+  def with_stubbed_stripe(configured:, client:, key: "sk_test_stub")
+    StripeClient.define_singleton_method(:client) { |**| client }
+    StripeClient.define_singleton_method(:configured?) { |**| configured }
+    StripeClient.instance_variable_set(:@clients, {})
     yield
   ensure
-    StripeClient.define_singleton_method(:client, original_client)
-    StripeClient.define_singleton_method(:configured?, original_configured)
+    StripeClient.define_singleton_method(:client) { |**| raise "StripeClient.client called outside with_stubbed_stripe" }
+    StripeClient.define_singleton_method(:configured?) { |**| raise "StripeClient.configured? called outside with_stubbed_stripe" }
   end
 
   def stub_empty_v1_client

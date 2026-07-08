@@ -1,6 +1,12 @@
 # Orchestrator for creating a Payout (and its Payment rows) from
 # either of two sources: a user-uploaded Stripe CSV (the existing
-# path) or a direct Stripe API fetch (Phase 1's new path).
+# path) or a direct Stripe API fetch from the calling user's own
+# Stripe credentials.
+#
+# Per-user credential resolution is the controller's job — see
+# `payouts_controller#fetch` for the `current_user.stripe_secret_key`
+# (with ENV fallback for dev/CI without DB credentials) and how it
+# threads the resolved key down to `StripePayoutFetcher.call(key:)`.
 #
 # Backwards-compatibility invariant: the `:csv` branch is
 # BIT-FOR-BIT equivalent to what `payouts_controller#create` did on
@@ -10,14 +16,10 @@
 # row-for-row equality.
 #
 # The `:stripe_api` branch is the new path. It uses
-# `StripePayoutFetcher` to discover the payout and pull its balance
-# transactions, then writes `arrival_date` from Stripe and
-# `name = PayoutName.from(arrival_date)` per the proposal §3.
-#
-# This class is reachable only from `rails console` (and from the
-# future Phase 2 controller action). `payouts_controller#create`
-# remains unchanged in Phase 1 — Phase 3 will refactor it to call
-# the :csv branch here.
+# `StripePayoutFetcher` (with the user-provided Stripe API key) to
+# discover the payout and pull its balance transactions, then writes
+# `arrival_date` from Stripe and `name = PayoutName.from(arrival_date)`
+# per the proposal §3.
 class PayoutImporter
   class CredentialsMissing < StandardError; end
 
@@ -25,7 +27,7 @@ class PayoutImporter
     alias_method :success?, :success
   end
 
-  def self.call(source:, user:, csv_content: nil, csv_file: nil, start_date: nil, end_date: nil, arrival_date: nil)
+  def self.call(source:, user:, csv_content: nil, csv_file: nil, start_date: nil, end_date: nil, arrival_date: nil, stripe_key: nil)
     new(
       source: source,
       user: user,
@@ -33,11 +35,12 @@ class PayoutImporter
       csv_file: csv_file,
       start_date: start_date,
       end_date: end_date,
-      arrival_date: arrival_date
+      arrival_date: arrival_date,
+      stripe_key: stripe_key
     ).call
   end
 
-  def initialize(source:, user:, csv_content:, csv_file:, start_date:, end_date:, arrival_date:)
+  def initialize(source:, user:, csv_content:, csv_file:, start_date:, end_date:, arrival_date:, stripe_key:)
     @source = source
     @user = user
     @csv_content = csv_content
@@ -45,6 +48,7 @@ class PayoutImporter
     @start_date = start_date
     @end_date = end_date
     @arrival_date = arrival_date
+    @stripe_key = stripe_key
   end
 
   def call
@@ -98,13 +102,18 @@ class PayoutImporter
     Result.new(success: true, payout: payout, errors: [], warnings: [])
   end
 
-  # Stripe API path — Phase 1's new feature. Adds the console smoke
-  # step documented in docs/stripe-direct-import-proposal.md §4
-  # Phase 1. Reachable from Phase 2 via `POST /payouts/fetch`.
+  # Stripe API path — uses the per-user Stripe API key threaded
+  # through from the controller. Reachable from Phase 2 via
+  # `POST /payouts/fetch`. Caller is responsible for resolving the
+  # key (current_user.stripe_secret_key → ENV fallback → raise).
   def import_from_stripe_api
-    raise CredentialsMissing, "Stripe API credentials missing" unless StripeClient.configured?
+    raise CredentialsMissing, "Stripe API credentials missing" if @stripe_key.blank?
 
-    fetched = StripePayoutFetcher.call(start_date: @start_date, end_date: @end_date)
+    fetched = StripePayoutFetcher.call(
+      start_date: @start_date,
+      end_date: @end_date,
+      key: @stripe_key
+    )
 
     if fetched.empty?
       return Result.new(

@@ -35,13 +35,14 @@ class StripePayoutFetcher
     end
   end
 
-  def self.call(start_date:, end_date:)
-    new(start_date, end_date).call
+  def self.call(start_date:, end_date:, key:)
+    new(start_date, end_date, key).call
   end
 
-  def initialize(start_date, end_date)
+  def initialize(start_date, end_date, key)
     @start_date = start_date
     @end_date = end_date
+    @key = key
   end
 
   def call
@@ -60,11 +61,17 @@ class StripePayoutFetcher
 
   private
 
+  # Resolve the Stripe client inside the per-call memoized
+  # StripeClient, so calls hit a per-key `StripeClient.client(key)` cache.
+  def client
+    StripeClient.client(key: @key)
+  end
+
   def discover_payout
     gte = @start_date.beginning_of_day.to_i
     lte = @end_date.end_of_day.to_i
 
-    payouts = StripeClient.client.v1.payouts.list(
+    payouts = client.v1.payouts.list(
       status: "paid",
       arrival_date: { gte: gte, lte: lte },
       limit: 100
@@ -75,7 +82,7 @@ class StripePayoutFetcher
 
   def balance_transaction_rows(payout)
     rows = []
-    StripeClient.client.v1.balance_transactions.list(
+    client.v1.balance_transactions.list(
       payout: payout.id,
       limit: 100,
       expand: [ "data.source" ]

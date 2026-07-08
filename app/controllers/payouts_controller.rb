@@ -29,8 +29,29 @@ class PayoutsController < ApplicationController
   end
 
   def new
-    render inertia: "Payouts/New"
+    # Per-user Stripe configuration drives the "Fetch from Stripe"
+    # tab on the New page (server-side rendered via Inertia). When
+    # the current user hasn't saved a Stripe API key in Settings,
+    # the tab is disabled on the client and the user gets a banner
+    # explaining the missing setup. The fallback chain is:
+    # User#stripe_secret_key (DB-encrypted) → ENV["STRIPE_SECRET_KEY"]
+    # → credentials (bootstrap) — see StripeClient#resolve.
+    render inertia: "Payouts/New", props: {
+      stripe_configured: stripe_configured_for_current_user
+    }
   end
+
+  # Whether `Current.user` has a usable Stripe API key. Used by the
+  # New page to decide whether to enable the "Fetch from Stripe"
+  # tab. The DB column is the source of truth; env/credentials are
+  # the fallback chain and aren't visible to a single user in
+  # multi-tenant setups anyway.
+  def stripe_configured_for_current_user
+    Current.user&.stripe_configured? ||
+      ENV["STRIPE_SECRET_KEY"].present? ||
+      Rails.application.credentials.dig(:stripe, :secret_key).present?
+  end
+  helper_method :stripe_configured_for_current_user
 
   def create
     csv_file = params[:csv_file]
@@ -66,10 +87,11 @@ class PayoutsController < ApplicationController
     end
   end
 
-  # Phase 2 — fetch a Stripe payout and import it directly. Equivalent
-  # to the CSV path, but reads from Stripe API instead of accepting
-  # an upload. Reachable only when `StripeClient.configured?` is true;
-  # the importer raises a friendly error otherwise.
+  # Phase 2 — fetch a Stripe payout and import it directly. Reads
+  # the per-user Stripe API key from the User model (encrypted at
+  # rest via Active Record encryption). Falls back to ENV /
+  # credentials for dev/CI users who haven't yet saved a key in
+  # Settings.
   def fetch
     start_date = parse_date_param(params[:start_date])
     end_date = parse_date_param(params[:end_date])
@@ -80,11 +102,17 @@ class PayoutsController < ApplicationController
       }
     end
 
+    stripe_key = resolve_stripe_key_for(Current.user)
+    if stripe_key.blank?
+      return redirect_to settings_path, alert: "Set your Stripe API key in Settings before fetching from Stripe."
+    end
+
     result = PayoutImporter.call(
       source: :stripe_api,
       user: Current.user,
       start_date: start_date,
-      end_date: end_date
+      end_date: end_date,
+      stripe_key: stripe_key
     )
 
     if result.success?
@@ -245,4 +273,21 @@ class PayoutsController < ApplicationController
     nil
   end
   alias_method :parse_arrival_date_param, :parse_date_param
+
+  # Per-user Stripe API key resolution for the :stripe_api branch.
+  # Order:
+  #   1. user.stripe_secret_key  (DB-encrypted via Rails 7+ Active
+  #                               Record encryption; per-user)
+  #   2. ENV["STRIPE_SECRET_KEY"]  (dev/CI fallback)
+  #   3. Rails.application.credentials.dig(:stripe, :secret_key)
+  #      (bootstrap fallback for the first-run case where no user
+  #      has configured their own key yet)
+  # Returns nil when none of the three resolves, so the controller
+  # can render a friendly redirect-to-Settings.
+  def resolve_stripe_key_for(user)
+    return ENV["STRIPE_SECRET_KEY"] if ENV["STRIPE_SECRET_KEY"].present?
+    return Rails.application.credentials.dig(:stripe, :secret_key) if Rails.application.credentials.dig(:stripe, :secret_key).present?
+
+    user&.stripe_secret_key
+  end
 end

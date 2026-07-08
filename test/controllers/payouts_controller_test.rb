@@ -20,12 +20,20 @@ class PayoutsControllerTest < ActionDispatch::IntegrationTest
       email_address: users(:one).email_address,
       password: "password"
     }
+
+    # PayoutsController#fetch reads the per-user Stripe key from
+    # Current.user.stripe_secret_key (via resolve_stripe_key_for).
+    # Set a fixture key on the fixture user so the controller has a
+    # key to pass to PayoutImporter without needing real env vars.
+    users(:one).update!(stripe_secret_key: "sk_test_user_fixture_key")
   end
 
   teardown do
-    # Drop the session cookie + DB row so each test starts clean.
+    # Drop the session cookie + DB row + per-user Stripe key so each
+    # test starts clean.
     delete session_path
     users(:one).sessions.destroy_all
+    users(:one).update_columns(stripe_secret_key: nil)
   end
 
   # --- #create (CSV path) ---
@@ -132,8 +140,13 @@ class PayoutsControllerTest < ActionDispatch::IntegrationTest
 
     original_client = StripeClient.method(:client)
     original_configured = StripeClient.method(:configured?)
-    StripeClient.define_singleton_method(:client) { fake_client }
-    StripeClient.define_singleton_method(:configured?) { true }
+    StripeClient.define_singleton_method(:client) { |**| fake_client }
+    StripeClient.define_singleton_method(:configured?) { |**| true }
+
+    # Per-user credentials: the controller will read
+    # Current.user.stripe_secret_key. Set it on the fixture user so
+    # the controller's resolve_stripe_key_for(user) picks it up.
+    users(:one).update!(stripe_secret_key: "sk_test_user_fixture_key")
 
     assert_difference -> { Payout.count }, 1 do
       post fetch_payouts_path, params: {
@@ -151,9 +164,8 @@ class PayoutsControllerTest < ActionDispatch::IntegrationTest
     StripeClient.define_singleton_method(:configured?, original_configured)
   end
 
-  test "fetch without configured Stripe credentials shows a server error" do
-    original_configured = StripeClient.method(:configured?)
-    StripeClient.define_singleton_method(:configured?) { false }
+  test "fetch without configured Stripe credentials redirects to settings" do
+    users(:one).update_columns(stripe_secret_key: nil)
 
     assert_no_difference -> { Payout.count } do
       post fetch_payouts_path, params: {
@@ -162,10 +174,9 @@ class PayoutsControllerTest < ActionDispatch::IntegrationTest
       }
     end
 
-    assert_response :success
-    assert_match(/credentials missing/i, response.body)
-  ensure
-    StripeClient.define_singleton_method(:configured?, original_configured)
+    assert_redirected_to settings_path
+    follow_redirect!
+    assert_match(/Set your Stripe API key in Settings/, flash[:alert])
   end
 
   test "fetch without dates shows a validation error" do
@@ -196,8 +207,8 @@ class PayoutsControllerTest < ActionDispatch::IntegrationTest
 
     original_client = StripeClient.method(:client)
     original_configured = StripeClient.method(:configured?)
-    StripeClient.define_singleton_method(:client) { fake_client }
-    StripeClient.define_singleton_method(:configured?) { true }
+    StripeClient.define_singleton_method(:client) { |**| fake_client }
+    StripeClient.define_singleton_method(:configured?) { |**| true }
 
     assert_no_difference -> { Payout.count } do
       post fetch_payouts_path, params: {

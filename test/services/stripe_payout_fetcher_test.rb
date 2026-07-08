@@ -62,8 +62,8 @@ class StripePayoutFetcherTest < ActiveSupport::TestCase
 
     original_client = StripeClient.method(:client)
     original_configured = StripeClient.method(:configured?)
-    StripeClient.define_singleton_method(:client) { fake_client }
-    StripeClient.define_singleton_method(:configured?) { true }
+    StripeClient.define_singleton_method(:client) { |**| fake_client }
+    StripeClient.define_singleton_method(:configured?) { |**| true }
     yield payouts_list, bts_list
   ensure
     StripeClient.define_singleton_method(:client, original_client)
@@ -74,7 +74,7 @@ class StripePayoutFetcherTest < ActiveSupport::TestCase
     stub_client(payouts: [], balance_transactions: []) do |_payouts_list, _bts_list|
       result = StripePayoutFetcher.call(
         start_date: Date.new(2026, 7, 1),
-        end_date: Date.new(2026, 7, 31)
+        end_date: Date.new(2026, 7, 31), key: "sk_test_stub"
       )
 
       assert result.empty?
@@ -92,7 +92,7 @@ class StripePayoutFetcherTest < ActiveSupport::TestCase
     stub_client(payouts: [ payout ], balance_transactions: []) do |payouts_list, _bts_list|
       StripePayoutFetcher.call(
         start_date: Date.new(2026, 7, 1),
-        end_date: Date.new(2026, 7, 31)
+        end_date: Date.new(2026, 7, 31), key: "sk_test_stub"
       )
 
       assert_equal 1, payouts_list.calls.size
@@ -115,7 +115,7 @@ class StripePayoutFetcherTest < ActiveSupport::TestCase
     stub_client(payouts: [ payout ], balance_transactions: []) do |_payouts_list, _bts_list|
       result = StripePayoutFetcher.call(
         start_date: Date.new(2026, 7, 1),
-        end_date: Date.new(2026, 7, 31)
+        end_date: Date.new(2026, 7, 31), key: "sk_test_stub"
       )
 
       assert_equal "po_002", result.stripe_payout_id
@@ -141,7 +141,7 @@ class StripePayoutFetcherTest < ActiveSupport::TestCase
     stub_client(payouts: [ payout ], balance_transactions: [ bt ]) do |_payouts_list, bts_list|
       result = StripePayoutFetcher.call(
         start_date: Date.new(2026, 7, 1),
-        end_date: Date.new(2026, 7, 31)
+        end_date: Date.new(2026, 7, 31), key: "sk_test_stub"
       )
 
       assert_equal 1, bts_list.calls.size
@@ -176,7 +176,7 @@ class StripePayoutFetcherTest < ActiveSupport::TestCase
     stub_client(payouts: [ payout ], balance_transactions: bts) do |_payouts_list, _bts_list|
       result = StripePayoutFetcher.call(
         start_date: Date.new(2026, 7, 1),
-        end_date: Date.new(2026, 7, 31)
+        end_date: Date.new(2026, 7, 31), key: "sk_test_stub"
       )
 
       assert_equal Date.new(2026, 4, 29), result.period_start
@@ -202,13 +202,13 @@ class StripePayoutFetcherTest < ActiveSupport::TestCase
 
     original_client = StripeClient.method(:client)
     original_configured = StripeClient.method(:configured?)
-    StripeClient.define_singleton_method(:client) { flaky_client }
-    StripeClient.define_singleton_method(:configured?) { true }
+    StripeClient.define_singleton_method(:client) { |**| flaky_client }
+    StripeClient.define_singleton_method(:configured?) { |**| true }
 
     err = assert_raises(StripePayoutFetcher::FetchError) do
       StripePayoutFetcher.call(
         start_date: Date.new(2026, 7, 1),
-        end_date: Date.new(2026, 7, 31)
+        end_date: Date.new(2026, 7, 31), key: "sk_test_stub"
       )
     end
     assert_match(/Stripe API error/, err.message)

@@ -7,11 +7,17 @@ interface Props {
     arrival_date?: string[]
     base?: string[]
   }
+  // Server-supplied via the payouts#new props. The new
+  // Settings page lets each user set their own encrypted Stripe
+  // API key; the value flows through Current.user.stripe_configured?
+  // on the server (with ENV / credentials fallback for dev) so we
+  // don't need a window-global.
+  stripe_configured?: boolean
 }
 
 type Tab = 'csv' | 'stripe'
 
-export default function New({ errors: initialErrors }: Props) {
+export default function New({ errors: initialErrors, stripe_configured: stripeConfigured = false }: Props) {
   const [csvPreview, setCsvPreview] = useState<{
     period_name: string
     arrival_date: string
@@ -21,14 +27,7 @@ export default function New({ errors: initialErrors }: Props) {
   } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Stripe credentials may be absent — surface that to the user up
-  // front so they don't fill in a date range and click "Fetch" only
-  // to hit a server-side "credentials missing" error.
-  const stripeConfigured =
-    typeof window !== 'undefined' &&
-    (window as unknown as { stripeConfigured?: boolean }).stripeConfigured !== false
-
-  const [tab, setTab] = useState<Tab>(stripeConfigured ? 'csv' : 'csv')
+  const [tab, setTab] = useState<Tab>('csv')
 
   const csvForm = useForm({
     csv_file: null as File | null,
@@ -167,10 +166,12 @@ export default function New({ errors: initialErrors }: Props) {
         {!stripeConfigured && (
           <div className="alert alert-warning mb-4 max-w-2xl">
             <span>
-              Stripe API credentials are not configured — the &quot;Fetch from Stripe&quot; tab
-              will return a server error. Add{' '}
-              <code className="text-xs">stripe: &#123; secret_key: sk_test_… &#125;</code>{' '}
-              to your credentials to enable it.
+              Stripe API credentials aren't configured for your account — the
+              &quot;Fetch from Stripe&quot; tab is disabled.{' '}
+              <Link href="/settings" className="link link-info">
+                Set your Stripe API key in Settings
+              </Link>{' '}
+              to enable it.
             </span>
           </div>
         )}

@@ -19,6 +19,14 @@ Rails.application.routes.draw do
   resources :transactions, only: [ :index, :show, :new, :create ]
   resources :customers, only: [ :index, :show ]
 
+  # Settings — per-user integration credentials (Stripe today,
+  # potentially Paddle/Wise/etc. later).
+  resource :settings, only: [ :show, :update ] do
+    member do
+      delete :stripe_secret_key, to: "settings#destroy_stripe_secret", as: :destroy_stripe_secret
+    end
+  end
+
   resource :session
   resource :registration
   resources :passwords, param: :token
