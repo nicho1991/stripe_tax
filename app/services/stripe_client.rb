@@ -35,8 +35,10 @@ class StripeClient
     def build_client(key)
       raise PayoutImporter::CredentialsMissing, "Stripe API credentials missing" if key.blank?
 
-      Stripe.api_key = key
-      Stripe::Client.new
+      # stripe-ruby 19.x: the modern client class is Stripe::StripeClient
+      # (constructed with the API key as a positional arg). Older docs
+      # reference `Stripe::Client` which is not defined in this version.
+      Stripe::StripeClient.new(key)
     end
 
     # Caller-provided key first, then env fallback (dev/CI), then
