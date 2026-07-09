@@ -3,6 +3,11 @@ Rails.application.routes.draw do
   get "dashboard", to: "dashboard#index"
 
   resources :payouts do
+    collection do
+      # Phase 2 — fetch a payout's data from Stripe directly instead
+      # of uploading a CSV. Delegates to `payouts#fetch`.
+      post :fetch
+    end
     member do
       get :pdf_eu
       get :pdf_non_eu
@@ -13,6 +18,14 @@ Rails.application.routes.draw do
   end
   resources :transactions, only: [ :index, :show, :new, :create ]
   resources :customers, only: [ :index, :show ]
+
+  # Settings — per-user integration credentials (Stripe today,
+  # potentially Paddle/Wise/etc. later).
+  resource :settings, only: [ :show, :update ] do
+    member do
+      delete :stripe_secret_key, to: "settings#destroy_stripe_secret", as: :destroy_stripe_secret
+    end
+  end
 
   resource :session
   resource :registration
