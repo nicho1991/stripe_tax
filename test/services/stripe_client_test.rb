@@ -2,13 +2,6 @@ require "test_helper"
 
 class StripeClientTest < ActiveSupport::TestCase
   setup do
-    # PayoutImporterTest's `with_stubbed_stripe` ensure block leaves
-    # StripeClient.client / .configured? pointing at a "raise if
-    # called outside with_stubbed_stripe" guard when its block exits.
-    # That leftover stub leaks across test files in the same parallel
-    # worker process — clear it here so we exercise the real methods.
-    StripeClient.singleton_class.remove_method(:client) if StripeClient.singleton_class.method_defined?(:client, false) && StripeClient.client rescue nil
-    StripeClient.singleton_class.remove_method(:configured?) if StripeClient.singleton_class.method_defined?(:configured?, false) && StripeClient.configured? rescue nil
     StripeClient.reset!
   end
 

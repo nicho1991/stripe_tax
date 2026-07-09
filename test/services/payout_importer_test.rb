@@ -251,14 +251,24 @@ class PayoutImporterTest < ActiveSupport::TestCase
   # the new per-key signatures. Tests that don't care about key
   # resolution should pass any placeholder key — the stubbed
   # configured? check ignores the key argument.
+  #
+  # The ensure block RESTORES the original singleton methods so the
+  # stub doesn't leak across test files in the same parallel
+  # worker process. (Earlier versions left raise-on-call stubs in
+  # place after the block exited, which forced every other test
+  # file to clean up after PayoutImporterTest.)
   def with_stubbed_stripe(configured:, client:, key: "sk_test_stub")
+    original_client = StripeClient.method(:client)
+    original_configured = StripeClient.method(:configured?)
     StripeClient.define_singleton_method(:client) { |**| client }
     StripeClient.define_singleton_method(:configured?) { |**| configured }
     StripeClient.instance_variable_set(:@clients, {})
     yield
   ensure
-    StripeClient.define_singleton_method(:client) { |**| raise "StripeClient.client called outside with_stubbed_stripe" }
-    StripeClient.define_singleton_method(:configured?) { |**| raise "StripeClient.configured? called outside with_stubbed_stripe" }
+    StripeClient.singleton_class.remove_method(:client) if StripeClient.singleton_class.method_defined?(:client, false)
+    StripeClient.singleton_class.remove_method(:configured?) if StripeClient.singleton_class.method_defined?(:configured?, false)
+    StripeClient.singleton_class.define_method(:client, original_client)
+    StripeClient.singleton_class.define_method(:configured?, original_configured)
   end
 
   def stub_empty_v1_client
