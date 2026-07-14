@@ -14,6 +14,11 @@ Rails.application.routes.draw do
   resources :transactions, only: [ :index, :show, :new, :create ]
   resources :customers, only: [ :index, :show ]
 
+  get "/integrations", to: "integrations#index", as: :integrations
+  post "/integrations/stripe", to: "integrations#save_stripe", as: :save_stripe_integration
+  delete "/integrations/stripe", to: "integrations#disconnect_stripe", as: :disconnect_stripe_integration
+  post "/integrations/stripe/test", to: "integrations#test_stripe", as: :test_stripe_integration
+
   resource :session
   resource :registration
   resources :passwords, param: :token

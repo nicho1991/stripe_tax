@@ -21,13 +21,20 @@ interface Totals {
   primary_currency: string
 }
 
+interface StripeStatus {
+  connected: boolean
+  verified: boolean
+  account_label: string | null
+}
+
 interface Props {
   recent_payouts: Payout[]
   total_payouts: number
   totals: Totals
+  stripe: StripeStatus
 }
 
-export default function Index({ recent_payouts, total_payouts, totals }: Props) {
+export default function Index({ recent_payouts, total_payouts, totals, stripe }: Props) {
   const formatCurrency = (amount: number, currency: string = 'USD') => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -59,6 +66,30 @@ export default function Index({ recent_payouts, total_payouts, totals }: Props) 
             </div>
           </div>
         </div>
+
+        {/* Stripe connection nudge */}
+        {!stripe.verified && (
+          <div className="alert alert-info mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+              <span className="font-semibold">Connect Stripe</span> to start importing payouts and
+              transactions directly from the API.
+            </div>
+            <Link href="/integrations" className="btn btn-sm btn-primary">
+              {stripe.connected ? 'Finish setup' : 'Connect with Stripe'}
+            </Link>
+          </div>
+        )}
+        {stripe.verified && (
+          <div className="alert alert-success mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+              <span className="font-semibold">Connected to Stripe</span>
+              {stripe.account_label ? ` — ${stripe.account_label}` : ''}.
+            </div>
+            <Link href="/integrations" className="btn btn-sm btn-ghost">
+              Manage
+            </Link>
+          </div>
+        )}
 
         {/* Upload Section */}
         <div className="mb-8">
