@@ -21,16 +21,20 @@ module StripeTax
 
     # Active Record encryption keys.
     # Resolution order:
-    #   1. ENV vars (production / CI)
+    #   1. ENV vars — both the Rails-standard ACTIVE_RECORD_ENCRYPTION_*
+    #      and the short AR_ENCRYPTION_* aliases (production / CI).
     #   2. .encryption_keys file in the repo root (development / test, gitignored)
     #   3. Rails credentials (production fallback)
     # Generate new keys with: bin/rails db:encryption:init
-    encryption_keys_source = if ENV["AR_ENCRYPTION_PRIMARY_KEY"].present?
-      {
-        primary_key: ENV["AR_ENCRYPTION_PRIMARY_KEY"],
-        deterministic_key: ENV["AR_ENCRYPTION_DETERMINISTIC_KEY"],
-        key_derivation_salt: ENV["AR_ENCRYPTION_KEY_DERIVATION_SALT"]
-      }
+    primary_key = ENV["ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY"].presence ||
+                  ENV["AR_ENCRYPTION_PRIMARY_KEY"].presence
+    deterministic_key = ENV["ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY"].presence ||
+                        ENV["AR_ENCRYPTION_DETERMINISTIC_KEY"].presence
+    key_derivation_salt = ENV["ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT"].presence ||
+                          ENV["AR_ENCRYPTION_KEY_DERIVATION_SALT"].presence
+
+    encryption_keys_source = if primary_key.present?
+      { primary_key: primary_key, deterministic_key: deterministic_key, key_derivation_salt: key_derivation_salt }
     elsif File.exist?(Rails.root.join(".encryption_keys"))
       YAML.load_file(Rails.root.join(".encryption_keys")).symbolize_keys
     else
