@@ -50,6 +50,10 @@ group :test do
   # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
   gem "capybara"
   gem "selenium-webdriver"
+  # Pin to < 6 — minitest 6.x changed the Runnable#run signature in a way
+  # that breaks Rails 8.0.4's test_unit/line_filtering on Ruby 4.0.5. Drop
+  # this once we're on minitest 6 + a Rails version that's compatible.
+  gem "minitest", "~> 5.26"
 end
 
 gem "inertia_rails", "~> 3.11"
@@ -61,3 +65,6 @@ gem "prawn"
 gem "prawn-table"
 
 gem "csv", "~> 3.3"
+
+# Stripe API client (https://github.com/stripe/stripe-ruby)
+gem "stripe", "~> 15.0"
