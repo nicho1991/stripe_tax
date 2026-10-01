@@ -98,10 +98,34 @@ class PayoutPdfService
     end
   end
 
+  # Decides which PDF section a payment belongs to. Mirrors the logic in
+  # app/frontend/pages/Payouts/Show.tsx so the report and the PDFs agree:
+  #
+  #   1. Stripe Fee payments always go to :stripe_fees regardless of country.
+  #   2. A manual_country_code override always wins (returns the symbol
+  #      from EuClassificationService.classify_country, e.g. :eu/:non_eu).
+  #   3. Otherwise, if the payment has a linked Transaction, use the
+  #      customer-influenced classification — this lifts an undetermined
+  #      transaction to :eu/:non_eu when *other* transactions by the same
+  #      customer have country data we can infer from.
+  #   4. Otherwise, fall back to the payment's stored enum.
+  #
+  # Step 3 is what makes an "elevated" payment (raw=undetermined, but
+  # lifted by cross-transaction inference) actually appear in the EU or
+  # Non-EU PDF — without it, those payments silently vanish from the
+  # classification they're reported under.
   def payment_classification(payment)
     return :stripe_fees if payment.type == "Stripe Fee"
 
-    payment.effective_eu_classification.to_sym
+    if payment.manual_country_code.present?
+      return EuClassificationService.classify_country(payment.manual_country_code)
+    end
+
+    if (tx = payment.stripe_transaction)
+      return tx.customer_influenced_eu_classification[:customer_influenced].to_sym
+    end
+
+    payment.eu_classification.to_sym
   end
 
   def add_header(pdf)
