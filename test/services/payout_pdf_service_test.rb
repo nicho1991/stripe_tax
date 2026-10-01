@@ -57,9 +57,9 @@ class PayoutPdfServiceTest < ActiveSupport::TestCase
   end
 
   # The filter that decides which section of the PDF a payment belongs to
-  # already respected manual_country_code via effective_eu_classification.
-  # This test guards that contract so the column-data fix above and the
-  # filter fix don't drift apart.
+  # mirrors the Show page logic: manual_country_code wins, then
+  # customer-influenced classification (which lifts undetermined via
+  # cross-transaction inference), then the raw enum.
   test "filtered_payments routes a manual-override payment into the EU section" do
     payment = build_payment(manual_country_code: "DE")
     # no transaction → would otherwise be undetermined
@@ -80,9 +80,77 @@ class PayoutPdfServiceTest < ActiveSupport::TestCase
       "Payment with manual_country_code='DE' should NOT appear in the Non-EU PDF"
   end
 
+  # Bug repro for the elevation regression: a payment with a transaction
+  # that has no country data on its own, but the customer has other
+  # transactions with country data, gets "elevated" to eu/non_eu by
+  # Transaction#customer_influenced_eu_classification. The Show page
+  # uses that elevation; the PDF must too, or these payments silently
+  # vanish from the EU/Non-EU PDFs (the undetermined PDF swallows them).
+  test "filtered_payments routes a customer-influenced-elevated payment into the Non-EU section" do
+    same_customer = "cus_elevated_#{SecureRandom.hex(4)}"
+
+    # Anchor: a transaction for the same customer with a real non-EU country
+    anchor_payment   = build_payment(stripe_id: "ch_anchor_#{SecureRandom.hex(4)}", customer_id: same_customer)
+    anchor_payment.update!(customer_id: same_customer)
+    build_transaction(anchor_payment, card_address_country: "US")
+
+    # Elevated: another transaction for the same customer, but with NO country data
+    elevated_payment = build_payment(stripe_id: "ch_elevated_#{SecureRandom.hex(4)}", customer_id: same_customer)
+    elevated_payment.update!(customer_id: same_customer)
+    build_transaction(elevated_payment) # no country fields
+
+    non_eu_service = PayoutPdfService.new(@payout, :non_eu)
+    filtered = non_eu_service.send(:filtered_payments)
+
+    assert_includes filtered, elevated_payment,
+      "Payment elevated to non_eu via cross-transaction inference " \
+      "should appear in the Non-EU PDF"
+  end
+
+  test "filtered_payments routes a customer-influenced-elevated payment into the EU section" do
+    same_customer = "cus_elevated_eu_#{SecureRandom.hex(4)}"
+
+    anchor_payment = build_payment(stripe_id: "ch_anchor_#{SecureRandom.hex(4)}", customer_id: same_customer)
+    anchor_payment.update!(customer_id: same_customer)
+    build_transaction(anchor_payment, card_address_country: "DE")
+
+    elevated_payment = build_payment(stripe_id: "ch_elevated_#{SecureRandom.hex(4)}", customer_id: same_customer)
+    elevated_payment.update!(customer_id: same_customer)
+    build_transaction(elevated_payment) # no country fields
+
+    filtered = @service.send(:filtered_payments)
+
+    assert_includes filtered, elevated_payment,
+      "Payment elevated to eu via cross-transaction inference " \
+      "should appear in the EU PDF"
+  end
+
+  test "filtered_payments leaves an undetermined payment in the Undetermined section when no elevation" do
+    payment = build_payment # no manual code, no transaction → undetermined
+    # explicit transaction to be sure
+    build_transaction(payment)
+
+    und_service = PayoutPdfService.new(@payout, :undetermined)
+    filtered    = und_service.send(:filtered_payments)
+
+    assert_includes filtered, payment,
+      "A truly undetermined payment (no manual code, no inference lift) " \
+      "should still appear in the Undetermined PDF"
+  end
+
+  test "payment_classification prefers manual_country_code over customer-influenced elevation" do
+    # Manual override should always win, even if the customer-influenced
+    # classification would say something different.
+    payment = build_payment(manual_country_code: "US")
+    build_transaction(payment, card_address_country: "DE") # would otherwise lift to :eu
+
+    assert_equal :non_eu, @service.send(:payment_classification, payment),
+      "manual_country_code='US' should override any customer-influenced lift to :eu"
+  end
+
   private
 
-  def build_payment(manual_country_code: nil, type: "Charge", stripe_id: nil)
+  def build_payment(manual_country_code: nil, type: "Charge", stripe_id: nil, customer_id: nil)
     @payout.payments.create!(
       type:                type,
       stripe_id:           stripe_id || "ch_#{SecureRandom.hex(8)}",
@@ -93,6 +161,7 @@ class PayoutPdfServiceTest < ActiveSupport::TestCase
       net:                 95.00,
       currency:            "USD",
       converted_currency:  "dkk",
+      customer_id:         customer_id,
       manual_country_code: manual_country_code,
       eu_classification:   0 # undetermined; effective_eu_classification will still honour the override
     )
