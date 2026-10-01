@@ -123,7 +123,7 @@ class PayoutPdfService
 
     data = filtered_payments.map do |payment|
       transaction   = payment.stripe_transaction
-      country_code  = customer_country_code(transaction)
+      country_code  = customer_country_code(transaction, payment.manual_country_code)
       [
         payment.stripe_id,
         payment.created_at_stripe.strftime("%Y-%m-%d"),
@@ -213,7 +213,9 @@ class PayoutPdfService
     sprintf("%.2f", amount.to_f)
   end
 
-  def customer_country_code(transaction)
+  def customer_country_code(transaction, manual_country_code = nil)
+    return manual_country_code if manual_country_code.present?
+
     return nil unless transaction
 
     enhancement   = transaction.enhanced_location_confidence
