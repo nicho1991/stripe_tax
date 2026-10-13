@@ -1,0 +1,10 @@
+# Local Active Record encryption keys for development.
+# Copy this file to .encryption_keys (gitignored) and fill in real keys.
+# Generate new keys with: bin/rails db:encryption:init
+#
+# For production, store these in Rails credentials or environment variables
+# (AR_ENCRYPTION_PRIMARY_KEY, AR_ENCRYPTION_DETERMINISTIC_KEY,
+# AR_ENCRYPTION_KEY_DERIVATION_SALT) — config/application.rb will read them.
+primary_key: <your_primary_key_here>
+deterministic_key: <your_deterministic_key_here>
+key_derivation_salt: <your_key_derivation_salt_here>

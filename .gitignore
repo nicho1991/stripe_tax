@@ -40,3 +40,6 @@ node_modules
 # https://vitejs.dev/guide/env-and-mode.html#env-files
 *.local
 
+# Local Active Record encryption keys (committed template: .encryption_keys.example)
+/.encryption_keys
+

@@ -21,6 +21,11 @@ class DashboardController < ApplicationController
         total_net: total_net,
         total_payments: total_payments,
         primary_currency: primary_currency
+      },
+      stripe: {
+        connected: Current.user.stripe_connected?,
+        verified: Current.user.stripe_account_verified?,
+        account_label: Current.user.stripe_account_label
       }
     }
   end
