@@ -10,6 +10,13 @@
 # Ignore all environment files.
 /.env*
 
+# Active Record encryption keys (per-user Stripe API secrets live
+# encrypted in DB; the master keys for that encryption live here in
+# dev/CI. In production, prefer Rails encrypted credentials:
+# `bin/rails db:encryption:init` writes them under
+# :active_record_encryption in config/credentials.yml.enc.
+/.encryption_keys
+
 # Ignore all logfiles and tempfiles.
 /log/*
 /tmp/*

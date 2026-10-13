@@ -29,12 +29,33 @@ class PayoutsController < ApplicationController
   end
 
   def new
-    render inertia: "Payouts/New"
+    # Per-user Stripe configuration drives the "Fetch from Stripe"
+    # tab on the New page (server-side rendered via Inertia). When
+    # the current user hasn't saved a Stripe API key in Settings,
+    # the tab is disabled on the client and the user gets a banner
+    # explaining the missing setup. The fallback chain is:
+    # User#stripe_secret_key (DB-encrypted) → ENV["STRIPE_SECRET_KEY"]
+    # → credentials (bootstrap) — see StripeClient#resolve.
+    render inertia: "Payouts/New", props: {
+      stripe_configured: stripe_configured_for_current_user
+    }
   end
+
+  # Whether `Current.user` has a usable Stripe API key. Used by the
+  # New page to decide whether to enable the "Fetch from Stripe"
+  # tab. The DB column is the source of truth; env/credentials are
+  # the fallback chain and aren't visible to a single user in
+  # multi-tenant setups anyway.
+  def stripe_configured_for_current_user
+    Current.user&.stripe_configured? ||
+      ENV["STRIPE_SECRET_KEY"].present? ||
+      Rails.application.credentials.dig(:stripe, :secret_key).present?
+  end
+  helper_method :stripe_configured_for_current_user
 
   def create
     csv_file = params[:csv_file]
-    period_name = params[:period_name]&.strip
+    arrival_date = parse_arrival_date_param(params[:arrival_date])
 
     if csv_file.blank?
       return render inertia: "Payouts/New", props: {
@@ -42,46 +63,63 @@ class PayoutsController < ApplicationController
       }
     end
 
-    # Read CSV content with UTF-8 encoding
-    csv_content = csv_file.read.force_encoding("UTF-8")
-    csv_file.rewind
-
-    # Parse CSV
-    parser = ::PayoutCsvParser.new(csv_content)
-    result = parser.parse
-
-    unless result[:success]
+    if arrival_date.blank?
       return render inertia: "Payouts/New", props: {
-        errors: { base: result[:errors] }
+        errors: { arrival_date: [ "Payout Date is required" ] }
       }
     end
 
-    # Use provided period name or default from parser
-    final_period_name = period_name.presence || result[:period_name]
+    # Phase 3: the form no longer asks for a free-form period name.
+    # PayoutImporter derives the name from `arrival_date` via
+    # `PayoutName.from`. The :csv branch is bit-for-bit equivalent to
+    # what the controller did before Phase 1.
+    result = PayoutImporter.call(
+      source: :csv,
+      user: Current.user,
+      csv_file: csv_file,
+      arrival_date: arrival_date
+    )
 
-    # Create payout with payments
-    payout = nil
-    ActiveRecord::Base.transaction do
-      payout = Current.user.payouts.create!(
-        name: final_period_name,
-        period_start: result[:period_start],
-        period_end: result[:period_end]
-      )
+    if result.success?
+      redirect_to payout_path(result.payout), notice: "Payout created successfully"
+    else
+      render inertia: "Payouts/New", props: { errors: { base: result.errors } }
+    end
+  end
 
-      result[:payments].each do |payment_data|
-        payout.payments.create!(payment_data)
-      end
+  # Phase 2 — fetch a Stripe payout and import it directly. Reads
+  # the per-user Stripe API key from the User model (encrypted at
+  # rest via Active Record encryption). Falls back to ENV /
+  # credentials for dev/CI users who haven't yet saved a key in
+  # Settings.
+  def fetch
+    start_date = parse_date_param(params[:start_date])
+    end_date = parse_date_param(params[:end_date])
+
+    if start_date.blank? || end_date.blank?
+      return render inertia: "Payouts/New", props: {
+        errors: { base: [ "Start date and end date are required" ] }
+      }
     end
 
-    redirect_to payout_path(payout), notice: "Payout created successfully"
-  rescue ActiveRecord::RecordInvalid => e
-    render inertia: "Payouts/New", props: {
-      errors: { base: [ e.record.errors.full_messages.join(", ") ] }
-    }
-  rescue StandardError => e
-    render inertia: "Payouts/New", props: {
-      errors: { base: [ "An error occurred: #{e.message}" ] }
-    }
+    stripe_key = resolve_stripe_key_for(Current.user)
+    if stripe_key.blank?
+      return redirect_to settings_path, alert: "Set your Stripe API key in Settings before fetching from Stripe."
+    end
+
+    result = PayoutImporter.call(
+      source: :stripe_api,
+      user: Current.user,
+      start_date: start_date,
+      end_date: end_date,
+      stripe_key: stripe_key
+    )
+
+    if result.success?
+      redirect_to payout_path(result.payout), notice: "Payout fetched from Stripe"
+    else
+      render inertia: "Payouts/New", props: { errors: { base: result.errors } }
+    end
   end
 
   def update
@@ -143,6 +181,7 @@ class PayoutsController < ApplicationController
       name: payout.name,
       period_start: payout.period_start,
       period_end: payout.period_end,
+      arrival_date: payout.arrival_date,
       total_amount: payout.total_amount.to_f,
       total_fees: payout.total_fees.to_f,
       total_net: payout.total_net.to_f,
@@ -220,5 +259,35 @@ class PayoutsController < ApplicationController
               filename: filename,
               type: "application/pdf",
               disposition: "attachment"
+  end
+
+  # Parse a YYYY-MM-DD date param safely; returns nil for blank /
+  # malformed input rather than raising. Form fields come through
+  # as ActionDispatch::Http::UploadedFile for file inputs and as
+  # strings for date inputs — we coerce here.
+  def parse_date_param(value)
+    return nil if value.blank?
+
+    Date.parse(value.to_s)
+  rescue ArgumentError, TypeError
+    nil
+  end
+  alias_method :parse_arrival_date_param, :parse_date_param
+
+  # Per-user Stripe API key resolution for the :stripe_api branch.
+  # Order:
+  #   1. user.stripe_secret_key  (DB-encrypted via Rails 7+ Active
+  #                               Record encryption; per-user)
+  #   2. ENV["STRIPE_SECRET_KEY"]  (dev/CI fallback)
+  #   3. Rails.application.credentials.dig(:stripe, :secret_key)
+  #      (bootstrap fallback for the first-run case where no user
+  #      has configured their own key yet)
+  # Returns nil when none of the three resolves, so the controller
+  # can render a friendly redirect-to-Settings.
+  def resolve_stripe_key_for(user)
+    return ENV["STRIPE_SECRET_KEY"] if ENV["STRIPE_SECRET_KEY"].present?
+    return Rails.application.credentials.dig(:stripe, :secret_key) if Rails.application.credentials.dig(:stripe, :secret_key).present?
+
+    user&.stripe_secret_key
   end
 end

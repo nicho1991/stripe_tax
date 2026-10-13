@@ -48,6 +48,7 @@
           <%= link_to "Payouts", payouts_path, class: "btn btn-ghost" %>
           <%= link_to "Transactions", transactions_path, class: "btn btn-ghost" %>
           <%= link_to "Customers", customers_path, class: "btn btn-ghost" %>
+          <%= link_to "Settings", settings_path, class: "btn btn-ghost" %>
           <%= button_to "Sign Out", session_path, method: :delete, class: "btn btn-ghost" %>
         <% else %>
           <%= link_to "Sign In", new_session_path, class: "btn btn-ghost" %>

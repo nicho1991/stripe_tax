@@ -5,6 +5,7 @@ interface Payout {
   name: string
   period_start: string
   period_end: string
+  arrival_date: string | null
   total_amount: number
   total_fees: number
   total_net: number
@@ -54,7 +55,7 @@ export default function Index({ payouts, pagination }: Props) {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Payouts</h1>
           <Link href="/payouts/new" className="btn btn-primary">
-            Upload New Payout CSV
+            Import Payout
           </Link>
         </div>
 
