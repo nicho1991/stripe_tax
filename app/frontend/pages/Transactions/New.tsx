@@ -92,7 +92,7 @@ export default function New({ errors: initialErrors, warnings: initialWarnings }
                 )}
                 <label className="label">
                   <span className="label-text-alt">
-                    Upload Stripe unified_payments CSV file. Duplicate transactions will be skipped or warned if they differ.
+                    Upload a Stripe unified_payments CSV file. Transactions with matching IDs will be updated with the latest CSV data.
                   </span>
                 </label>
               </div>
@@ -116,4 +116,3 @@ export default function New({ errors: initialErrors, warnings: initialWarnings }
     </>
   )
 }
-

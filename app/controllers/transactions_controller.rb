@@ -104,7 +104,8 @@ class TransactionsController < ApplicationController
 
     # Build success message
     notice = "Imported #{import_result[:imported]} transaction(s)"
-    notice += ", skipped #{import_result[:skipped]} duplicate(s)" if import_result[:skipped] > 0
+    notice += ", updated #{import_result[:updated]} existing transaction(s)" if import_result[:updated] > 0
+    notice += ", skipped #{import_result[:skipped]} unchanged duplicate(s)" if import_result[:skipped] > 0
 
     if import_result[:warnings].any?
       max_warnings = 5
